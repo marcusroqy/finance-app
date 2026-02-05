@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/lib/i18n/language-context";
 
@@ -23,11 +22,10 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Finanças IA",
-    startupImage: [], // Next.js can auto-generate if we had opengraph-image, but empty often defaults nicely
   },
   icons: {
-    icon: "/icon",
-    apple: "/apple-icon", // Explicitly point to the route we created
+    icon: "/icons/icon-192x192.png",
+    apple: "/icons/icon-192x192.png",
   },
   formatDetection: {
     telephone: false,
@@ -49,13 +47,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system" // Defaulting to system to respect device preference, user can override
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
@@ -63,7 +67,25 @@ export default function RootLayout({
             {children}
           </LanguageProvider>
         </ThemeProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW registered: ', registration);
+                    })
+                    .catch(function(error) {
+                      console.log('SW registration failed: ', error);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
 }
+
