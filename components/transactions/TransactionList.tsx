@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Transaction } from "@/lib/types"
 import { TransactionItem } from "./TransactionItem"
 import { EditTransactionDialog } from "./EditTransactionDialog"
+import { MonthNavigator } from "./MonthNavigator"
 import { useLanguage } from "@/lib/i18n/language-context"
 
 interface TransactionListProps {
@@ -19,6 +20,9 @@ interface TransactionListProps {
 export function TransactionList({ transactions, isLoading, onUpdate }: TransactionListProps) {
     const { t, locale } = useLanguage()
     const router = useRouter()
+
+    // State for selected month (defaults to current month)
+    const [selectedMonth, setSelectedMonth] = React.useState(() => new Date())
 
     const handleDelete = async (id: string) => {
         try {
@@ -34,24 +38,47 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
     const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
 
-    // Group by Month (Moves before conditional returns to fix Hook Error)
-    const groupedTransactions = React.useMemo(() => {
-        const groups: Record<string, Transaction[]> = {}
+    // Get available months from transactions
+    const availableMonths = React.useMemo(() => {
+        const months = new Set<string>()
         transactions.forEach(t => {
             const date = new Date(t.date)
-            const key = format(date, "yyyy-MM") // Sortable key
-            if (!groups[key]) groups[key] = []
-            groups[key].push(t)
+            months.add(format(date, "yyyy-MM"))
         })
-        return groups
+        return Array.from(months).sort((a, b) => b.localeCompare(a))
     }, [transactions])
 
-    // Sort keys descending (newest first)
-    // Memoize this too to keep hooks order consistent if we wanted, but logic is fine here.
-    const sortedKeys = React.useMemo(() =>
-        Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a)),
-        [groupedTransactions])
+    // Auto-select the most recent month with transactions
+    React.useEffect(() => {
+        if (availableMonths.length > 0) {
+            const currentMonthKey = format(selectedMonth, "yyyy-MM")
+            if (!availableMonths.includes(currentMonthKey)) {
+                // Select the most recent month with transactions
+                const [year, month] = availableMonths[0].split("-")
+                setSelectedMonth(new Date(parseInt(year), parseInt(month) - 1, 1))
+            }
+        }
+    }, [availableMonths])
 
+    // Filter transactions for selected month
+    const filteredTransactions = React.useMemo(() => {
+        const selectedKey = format(selectedMonth, "yyyy-MM")
+        return transactions.filter(t => {
+            const date = new Date(t.date)
+            return format(date, "yyyy-MM") === selectedKey
+        })
+    }, [transactions, selectedMonth])
+
+    // Calculate monthly totals
+    const monthlyTotals = React.useMemo(() => {
+        const income = filteredTransactions
+            .filter(t => t.type === 'income')
+            .reduce((sum, t) => sum + Number(t.amount), 0)
+        const expenses = filteredTransactions
+            .filter(t => t.type === 'expense')
+            .reduce((sum, t) => sum + Number(t.amount), 0)
+        return { income, expenses, balance: income - expenses }
+    }, [filteredTransactions])
 
     const handleEdit = (transaction: Transaction) => {
         setEditingTransaction(transaction)
@@ -71,35 +98,53 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
     }
 
     return (
-        <div className="space-y-8">
-            {sortedKeys.map(key => {
-                const groupDate = new Date(key + "-01");
-                const isPt = locale === 'pt';
+        <div className="space-y-6">
+            {/* Month Navigator */}
+            <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
+                <MonthNavigator
+                    currentMonth={selectedMonth}
+                    onMonthChange={setSelectedMonth}
+                    availableMonths={availableMonths}
+                />
 
-                // Format title securely using imported locale
-                const monthTitle = format(groupDate, "MMMM yyyy", {
-                    locale: isPt ? ptBR : undefined
-                });
-
-                // Capitalize first letter
-                const finalTitle = monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
-
-                return (
-                    <div key={key} className="space-y-4">
-                        <h3 className="text-sm font-medium text-muted-foreground bg-muted/30 p-2 px-4 rounded-lg inline-block border border-border/50">
-                            {finalTitle}
-                        </h3>
-                        {groupedTransactions[key].map((t) => (
-                            <TransactionItem
-                                key={t.id}
-                                transaction={t}
-                                onDelete={handleDelete}
-                                onEdit={handleEdit}
-                            />
-                        ))}
+                {/* Monthly Summary */}
+                <div className="flex items-center justify-center gap-6 mt-3 pt-3 border-t border-border/30 text-sm">
+                    <div className="text-center">
+                        <span className="text-muted-foreground">
+                            {locale === 'pt' ? 'Receitas' : 'Income'}
+                        </span>
+                        <p className="font-semibold text-green-500">
+                            +{locale === 'pt' ? 'R$' : '$'}{monthlyTotals.income.toFixed(2)}
+                        </p>
                     </div>
-                )
-            })}
+                    <div className="text-center">
+                        <span className="text-muted-foreground">
+                            {locale === 'pt' ? 'Despesas' : 'Expenses'}
+                        </span>
+                        <p className="font-semibold text-red-500">
+                            -{locale === 'pt' ? 'R$' : '$'}{monthlyTotals.expenses.toFixed(2)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Transaction List */}
+            {filteredTransactions.length === 0 ? (
+                <div className="text-center p-6 text-muted-foreground border-2 border-dashed rounded-xl">
+                    {locale === 'pt' ? 'Nenhuma transação neste mês' : 'No transactions this month'}
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filteredTransactions.map((t) => (
+                        <TransactionItem
+                            key={t.id}
+                            transaction={t}
+                            onDelete={handleDelete}
+                            onEdit={handleEdit}
+                        />
+                    ))}
+                </div>
+            )}
 
             <EditTransactionDialog
                 open={isEditDialogOpen}
@@ -110,3 +155,4 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
         </div>
     )
 }
+
