@@ -70,7 +70,7 @@ export function CategoryChart({ transactions }: CategoryChartProps) {
                             ))}
                         </Pie>
                         <Tooltip
-                            formatter={(value: number) => `$${value.toFixed(2)}`}
+                            formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, 'Valor']}
                             contentStyle={{
                                 backgroundColor: 'var(--card)',
                                 borderColor: 'var(--border)',
