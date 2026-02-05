@@ -123,8 +123,25 @@ export function HouseholdSettings() {
     if (!data) {
         return (
             <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                    {isPt ? "Erro ao carregar dados" : "Failed to load data"}
+                <CardContent className="py-8 text-center space-y-4">
+                    <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-yellow-500/10">
+                        <Users className="h-6 w-6 text-yellow-500" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold">
+                            {isPt ? "Configuração Necessária" : "Setup Required"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
+                            {isPt
+                                ? "Para usar a funcionalidade de Família, é necessário rodar o script SQL no Supabase primeiro."
+                                : "To use the Household feature, you need to run the SQL script in Supabase first."
+                            }
+                        </p>
+                    </div>
+                    <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+                        <p><strong>Supabase Dashboard</strong> → SQL Editor</p>
+                        <p className="mt-1">→ sql/household_schema.sql</p>
+                    </div>
                 </CardContent>
             </Card>
         )
