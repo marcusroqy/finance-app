@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 
 export default function AppLayout({
     children,
@@ -15,6 +16,7 @@ export default function AppLayout({
                 <AppHeader />
                 {children}
             </main>
+            <PWAInstallPrompt />
         </div>
     );
 }
