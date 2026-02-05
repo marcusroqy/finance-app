@@ -11,43 +11,64 @@ export async function GET() {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Buscar household do usuário com membros
+    console.log("[Household API] User ID:", user.id)
+
+    // First, check if user has a household membership
     const { data: membership, error: membershipError } = await supabase
         .from("household_members")
-        .select(`
-            household_id,
-            role,
-            households (
-                id,
-                name,
-                created_by,
-                created_at
-            )
-        `)
+        .select("household_id, role")
         .eq("user_id", user.id)
         .single()
 
+    console.log("[Household API] Membership:", membership, "Error:", membershipError)
+
     if (membershipError || !membership) {
-        return NextResponse.json({ error: "No household found" }, { status: 404 })
+        // User doesn't have a household - create one for them
+        console.log("[Household API] No household found, creating one...")
+
+        const { data: newHousehold, error: createError } = await supabase
+            .from("households")
+            .insert({ name: "Minha Família", created_by: user.id })
+            .select()
+            .single()
+
+        if (createError) {
+            console.log("[Household API] Create household error:", createError)
+            return NextResponse.json({ error: "Failed to create household: " + createError.message }, { status: 500 })
+        }
+
+        // Add user as owner
+        const { error: addMemberError } = await supabase
+            .from("household_members")
+            .insert({ household_id: newHousehold.id, user_id: user.id, role: "owner" })
+
+        if (addMemberError) {
+            console.log("[Household API] Add member error:", addMemberError)
+            return NextResponse.json({ error: "Failed to add member: " + addMemberError.message }, { status: 500 })
+        }
+
+        return NextResponse.json({
+            household: newHousehold,
+            role: "owner",
+            members: [{ id: user.id, user_id: user.id, role: "owner", profiles: { email: user.email } }],
+            pendingInvites: []
+        })
     }
 
-    // Buscar todos os membros do household
+    // Get household details
+    const { data: household } = await supabase
+        .from("households")
+        .select("*")
+        .eq("id", membership.household_id)
+        .single()
+
+    // Get all members (simple query without profile join)
     const { data: members } = await supabase
         .from("household_members")
-        .select(`
-            id,
-            user_id,
-            role,
-            joined_at,
-            profiles:user_id (
-                full_name,
-                email,
-                avatar_url
-            )
-        `)
+        .select("id, user_id, role, joined_at")
         .eq("household_id", membership.household_id)
 
-    // Buscar convites pendentes
+    // Get pending invites
     const { data: invites } = await supabase
         .from("household_invites")
         .select("*")
@@ -55,7 +76,7 @@ export async function GET() {
         .eq("status", "pending")
 
     return NextResponse.json({
-        household: membership.households,
+        household,
         role: membership.role,
         members: members || [],
         pendingInvites: invites || []
