@@ -1,6 +1,6 @@
 -- =============================================
 -- HOUSEHOLD SCHEMA - Conta Compartilhada
--- Execute este script no Supabase SQL Editor
+-- Versão SAFE - Pode ser executado múltiplas vezes
 -- =============================================
 
 -- 1. Tabela households (Lares/Famílias)
@@ -33,16 +33,41 @@ CREATE TABLE IF NOT EXISTS household_invites (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 4. Adicionar household_id na tabela transactions
-ALTER TABLE transactions 
-ADD COLUMN IF NOT EXISTS household_id UUID REFERENCES households ON DELETE SET NULL;
+-- 4. Adicionar household_id na tabela transactions (safe)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'transactions' AND column_name = 'household_id'
+  ) THEN
+    ALTER TABLE transactions ADD COLUMN household_id UUID REFERENCES households ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- 5. Habilitar RLS
 ALTER TABLE households ENABLE ROW LEVEL SECURITY;
 ALTER TABLE household_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE household_invites ENABLE ROW LEVEL SECURITY;
 
--- 6. Policies para households
+-- 6. DROP existing policies (safe cleanup)
+DROP POLICY IF EXISTS "Users can view their households" ON households;
+DROP POLICY IF EXISTS "Users can create households" ON households;
+DROP POLICY IF EXISTS "Owners can update households" ON households;
+DROP POLICY IF EXISTS "Members can view household members" ON household_members;
+DROP POLICY IF EXISTS "Owners can insert members" ON household_members;
+DROP POLICY IF EXISTS "Owners can delete members" ON household_members;
+DROP POLICY IF EXISTS "Owners can manage invites" ON household_invites;
+DROP POLICY IF EXISTS "Anyone can view invite by token" ON household_invites;
+DROP POLICY IF EXISTS "Users can view own transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can view household transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can insert own transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can insert household transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can update own transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can update household transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can delete own transactions" ON transactions;
+DROP POLICY IF EXISTS "Users can delete household transactions" ON transactions;
+
+-- 7. Create policies for households
 CREATE POLICY "Users can view their households" ON households
   FOR SELECT USING (
     id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid())
@@ -56,7 +81,7 @@ CREATE POLICY "Owners can update households" ON households
     id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid() AND role = 'owner')
   );
 
--- 7. Policies para household_members
+-- 8. Policies for household_members
 CREATE POLICY "Members can view household members" ON household_members
   FOR SELECT USING (
     household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid())
@@ -65,64 +90,56 @@ CREATE POLICY "Members can view household members" ON household_members
 CREATE POLICY "Owners can insert members" ON household_members
   FOR INSERT WITH CHECK (
     household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid() AND role = 'owner')
-    OR user_id = auth.uid() -- Allow user to add themselves when accepting invite
+    OR user_id = auth.uid()
   );
 
 CREATE POLICY "Owners can delete members" ON household_members
   FOR DELETE USING (
     household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid() AND role = 'owner')
-    OR user_id = auth.uid() -- Members can remove themselves
+    OR user_id = auth.uid()
   );
 
--- 8. Policies para household_invites
+-- 9. Policies for household_invites
 CREATE POLICY "Owners can manage invites" ON household_invites
   FOR ALL USING (
     household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid() AND role = 'owner')
   );
 
 CREATE POLICY "Anyone can view invite by token" ON household_invites
-  FOR SELECT USING (true); -- Token validation done in app
+  FOR SELECT USING (true);
 
--- 9. Atualizar policy de transactions para incluir household
-DROP POLICY IF EXISTS "Users can view own transactions" ON transactions;
+-- 10. Updated policies for transactions
 CREATE POLICY "Users can view household transactions" ON transactions
   FOR SELECT USING (
     auth.uid() = user_id 
     OR household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid())
   );
 
-DROP POLICY IF EXISTS "Users can insert own transactions" ON transactions;
 CREATE POLICY "Users can insert household transactions" ON transactions
-  FOR INSERT WITH CHECK (
-    auth.uid() = user_id
-  );
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can update own transactions" ON transactions;
 CREATE POLICY "Users can update household transactions" ON transactions
   FOR UPDATE USING (
     auth.uid() = user_id 
     OR household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid())
   );
 
-DROP POLICY IF EXISTS "Users can delete own transactions" ON transactions;
 CREATE POLICY "Users can delete household transactions" ON transactions
   FOR DELETE USING (
     auth.uid() = user_id 
     OR household_id IN (SELECT household_id FROM household_members WHERE user_id = auth.uid())
   );
 
--- 10. Função para criar household automaticamente para novos usuários
+-- 11. Trigger function (replace if exists)
 CREATE OR REPLACE FUNCTION create_default_household()
 RETURNS TRIGGER AS $$
 DECLARE
   new_household_id UUID;
 BEGIN
-  -- Criar household padrão
   INSERT INTO households (name, created_by)
   VALUES ('Minha Família', NEW.id)
   RETURNING id INTO new_household_id;
   
-  -- Adicionar usuário como owner
   INSERT INTO household_members (household_id, user_id, role)
   VALUES (new_household_id, NEW.id, 'owner');
   
@@ -130,13 +147,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 11. Trigger para criar household ao criar usuário
+-- 12. Create trigger (drop first to avoid duplicates)
 DROP TRIGGER IF EXISTS on_auth_user_created_household ON auth.users;
 CREATE TRIGGER on_auth_user_created_household
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION create_default_household();
 
--- 12. Migrar usuários existentes (criar household para quem não tem)
+-- 13. Migrate existing users (safe - only those without household)
 DO $$
 DECLARE
   user_record RECORD;
@@ -146,18 +163,17 @@ BEGIN
     SELECT id FROM auth.users 
     WHERE id NOT IN (SELECT user_id FROM household_members)
   LOOP
-    -- Criar household
     INSERT INTO households (name, created_by)
     VALUES ('Minha Família', user_record.id)
     RETURNING id INTO new_household_id;
     
-    -- Adicionar como owner
     INSERT INTO household_members (household_id, user_id, role)
     VALUES (new_household_id, user_record.id, 'owner');
     
-    -- Migrar transações existentes
     UPDATE transactions 
     SET household_id = new_household_id 
     WHERE user_id = user_record.id AND household_id IS NULL;
   END LOOP;
 END $$;
+
+-- DONE! Feature de Família ativada.
