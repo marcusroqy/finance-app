@@ -24,6 +24,7 @@ export function HouseholdSettings() {
 
     const [data, setData] = React.useState<HouseholdData | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
+    const [error, setError] = React.useState<string | null>(null)
     const [inviteEmail, setInviteEmail] = React.useState("")
     const [isSendingInvite, setIsSendingInvite] = React.useState(false)
     const [lastInviteLink, setLastInviteLink] = React.useState("")
@@ -31,15 +32,23 @@ export function HouseholdSettings() {
     const [isEditingName, setIsEditingName] = React.useState(false)
 
     const fetchData = async () => {
+        setIsLoading(true)
+        setError(null)
         try {
             const res = await fetch("/api/household")
+            const json = await res.json()
+
+            console.log("[HouseholdSettings] API Response:", res.status, json)
+
             if (res.ok) {
-                const household = await res.json()
-                setData(household)
-                setHouseholdName(household.household?.name || "")
+                setData(json)
+                setHouseholdName(json.household?.name || "")
+            } else {
+                setError(json.error || `HTTP ${res.status}`)
             }
-        } catch (error) {
-            console.error("Failed to fetch household", error)
+        } catch (err: any) {
+            console.error("Failed to fetch household", err)
+            setError(err.message || "Network error")
         } finally {
             setIsLoading(false)
         }
@@ -129,19 +138,23 @@ export function HouseholdSettings() {
                     </div>
                     <div>
                         <h3 className="font-semibold">
-                            {isPt ? "Configuração Necessária" : "Setup Required"}
+                            {isPt ? "Erro ao Carregar" : "Failed to Load"}
                         </h3>
+                        {error && (
+                            <p className="text-sm text-red-500 mt-2 font-mono">
+                                {error}
+                            </p>
+                        )}
                         <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
                             {isPt
-                                ? "Para usar a funcionalidade de Família, é necessário rodar o script SQL no Supabase primeiro."
-                                : "To use the Household feature, you need to run the SQL script in Supabase first."
+                                ? "Não foi possível carregar os dados da família."
+                                : "Could not load household data."
                             }
                         </p>
                     </div>
-                    <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
-                        <p><strong>Supabase Dashboard</strong> → SQL Editor</p>
-                        <p className="mt-1">→ sql/household_schema.sql</p>
-                    </div>
+                    <Button onClick={fetchData} variant="outline">
+                        {isPt ? "Tentar Novamente" : "Try Again"}
+                    </Button>
                 </CardContent>
             </Card>
         )
