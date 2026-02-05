@@ -16,9 +16,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LanguageSelector } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { HouseholdSettings } from "@/components/household/HouseholdSettings"
 
 // Icons
-import { User, Mail, Globe, Camera, Save, AlertTriangle, Download, Trash2, Loader2 } from "lucide-react"
+import { User, Mail, Globe, Camera, Save, AlertTriangle, Download, Trash2, Loader2, Users } from "lucide-react"
 
 export default function SettingsPage() {
     const router = useRouter()
@@ -143,8 +144,12 @@ export default function SettingsPage() {
             </div>
 
             <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="profile">Perfil</TabsTrigger>
+                    <TabsTrigger value="household" className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        Família
+                    </TabsTrigger>
                     <TabsTrigger value="preferences">Preferências</TabsTrigger>
                     <TabsTrigger value="data">Dados</TabsTrigger>
                 </TabsList>
@@ -224,8 +229,8 @@ export default function SettingsPage() {
                             {/* Message */}
                             {message && (
                                 <div className={`p-3 rounded-md text-sm ${message.type === 'success'
-                                        ? 'bg-emerald-500/10 text-emerald-500'
-                                        : 'bg-red-500/10 text-red-500'
+                                    ? 'bg-emerald-500/10 text-emerald-500'
+                                    : 'bg-red-500/10 text-red-500'
                                     }`}>
                                     {message.text}
                                 </div>
@@ -241,6 +246,11 @@ export default function SettingsPage() {
                             </Button>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* HOUSEHOLD TAB */}
+                <TabsContent value="household" className="space-y-6">
+                    <HouseholdSettings />
                 </TabsContent>
 
                 {/* PREFERENCES TAB */}
