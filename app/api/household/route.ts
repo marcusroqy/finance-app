@@ -72,13 +72,19 @@ export async function GET() {
     let enrichedMembers = members || [];
     if (members && members.length > 0) {
         const userIds = members.map(m => m.user_id);
-        const { data: profiles } = await supabase
+        const { data: profilesData, error: profileError } = await supabase
             .from("profiles")
             .select("id, full_name, email, avatar_url")
             .in("id", userIds);
 
+        if (profileError) {
+            console.error("[Household API] Profile fetch error:", profileError);
+        }
+
+        const safeProfiles = profilesData || [];
+
         // SELF-HEAL: If current user profile is missing in the fetched list, upsert it!
-        const currentUserProfile = profiles?.find(p => p.id === user.id);
+        const currentUserProfile = safeProfiles.find(p => p.id === user.id);
         if (!currentUserProfile) {
             console.log("[Household API] Self-healing missing profile for:", user.id);
             const fallbackProfile = {
@@ -90,34 +96,35 @@ export async function GET() {
             };
 
             // Fire and forget upsert to fix DB
-            await supabase.from("profiles").upsert(fallbackProfile);
+            supabase.from("profiles").upsert(fallbackProfile).then(({ error }) => {
+                if (error) console.error("Self-heal upsert failed:", error);
+            });
 
             // Add to our local list for display
-            if (profiles) profiles.push(fallbackProfile as any);
+            safeProfiles.push(fallbackProfile as any);
         }
 
-        if (profiles) {
-            console.log("[Household API] DEBUG Profiles:", profiles);
+        console.log("[Household API] DEBUG Profiles:", safeProfiles);
 
-            enrichedMembers = members.map(m => {
-                let profile: any = profiles.find(p => p.id === m.user_id);
+        // ALWAYS Run the map, even if profile fetch failed, to ensure Auth User fallback works
+        enrichedMembers = members.map(m => {
+            let profile: any = safeProfiles.find(p => p.id === m.user_id);
 
-                // Fallback for current user if still missing (shouldn't happen with self-heal)
-                if (!profile && m.user_id === user.id) {
-                    profile = {
-                        id: user.id,
-                        full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-                        email: user.email,
-                        avatar_url: user.user_metadata?.avatar_url
-                    };
-                }
-
-                return {
-                    ...m,
-                    profiles: profile || null
+            // Fallback for current user if still missing (shouldn't happen with self-heal)
+            if (!profile && m.user_id === user.id) {
+                profile = {
+                    id: user.id,
+                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+                    email: user.email,
+                    avatar_url: user.user_metadata?.avatar_url
                 };
-            });
-        }
+            }
+
+            return {
+                ...m,
+                profiles: profile || null
+            };
+        });
     }
 
     // Get pending invites
