@@ -106,11 +106,11 @@ export async function GET() {
 
         console.log("[Household API] DEBUG Profiles:", safeProfiles);
 
-        // ALWAYS Run the map, even if profile fetch failed, to ensure Auth User fallback works
-        enrichedMembers = members.map(m => {
+        // ALWAYS Run the map
+        enrichedMembers = await Promise.all(members.map(async (m) => {
             let profile: any = safeProfiles.find(p => p.id === m.user_id);
 
-            // Fallback for current user if still missing (shouldn't happen with self-heal)
+            // 1. Fallback for current user using session default
             if (!profile && m.user_id === user.id) {
                 profile = {
                     id: user.id,
@@ -120,11 +120,34 @@ export async function GET() {
                 };
             }
 
+            // 2. Fallback for OTHER users using RPC (Security Definer)
+            if (!profile && m.user_id !== user.id) {
+                const { data: rpcData, error: rpcError } = await supabase.rpc('get_household_member_details', {
+                    target_user_id: m.user_id
+                });
+
+                if (rpcData && rpcData.length > 0) {
+                    profile = {
+                        id: m.user_id,
+                        full_name: rpcData[0].full_name || rpcData[0].email?.split('@')[0], // Use email handle if name missing
+                        email: rpcData[0].email,
+                        avatar_url: rpcData[0].avatar_url
+                    };
+
+                    // OPTIONAL: Self-heal the missing public profile since we have the data now!
+                    // This caches the data so we don't need RPC next time
+                    supabase.from("profiles").upsert({
+                        ...profile,
+                        updated_at: new Date().toISOString()
+                    }).then(() => console.log("Self-healed other user profile via RPC"));
+                }
+            }
+
             return {
                 ...m,
                 profiles: profile || null
             };
-        });
+        }));
     }
 
     // Get pending invites
