@@ -12,6 +12,7 @@ export interface Message {
     id: string
     role: "user" | "assistant"
     content: string
+    image?: string // Base64 or URL
     createdAt: Date
     options?: MessageOption[]
 }
