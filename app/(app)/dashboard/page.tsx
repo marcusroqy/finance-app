@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
                 {/* Main Column (Charts & Transactions) */}
                 <div className="lg:col-span-2 space-y-6">
-                    <CreditCardsWidget transactions={transactions} />
+                    <CreditCardsWidget transactions={transactions} onUpdate={fetchTransactions} />
                     <FinancialChart transactions={transactions} />
 
                     <div className="rounded-xl border bg-card text-card-foreground shadow-sm">

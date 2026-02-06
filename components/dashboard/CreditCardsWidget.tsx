@@ -9,15 +9,25 @@ import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { formatCurrency } from "@/lib/utils"
 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { TransactionList } from "@/components/transactions/TransactionList"
+
 interface CreditCardsWidgetProps {
     transactions: Transaction[]
+    onUpdate?: () => void
 }
 
-export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
+export function CreditCardsWidget({ transactions, onUpdate }: CreditCardsWidgetProps) {
     const { t } = useLanguage()
     const [cards, setCards] = React.useState<CreditCard[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
-    const [activeIndex, setActiveIndex] = React.useState(0)
+    const [selectedCard, setSelectedCard] = React.useState<CreditCard | null>(null)
 
     const fetchCards = async () => {
         setIsLoading(true)
@@ -38,7 +48,7 @@ export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
         fetchCards()
     }, [])
 
-    // Filter expenses for current month
+    // Filter expenses for current month for the preview
     const currentMonth = new Date().getMonth()
     const currentYear = new Date().getFullYear()
 
@@ -70,6 +80,10 @@ export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
         return BANKS[bankKey] || BANKS[card.brand] || BANKS['mastercard'];
     }
 
+    const selectedCardTransactions = selectedCard
+        ? transactions.filter(t => (t as any).card_id === selectedCard.id)
+        : [];
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -84,13 +98,19 @@ export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
                     const invoiceAmount = calculateCardInvoice(card.id)
 
                     return (
-                        <div
+                        <button
                             key={card.id}
+                            type="button"
+                            onClick={() => {
+                                console.log("Clicked card", card.id)
+                                setSelectedCard(card)
+                            }}
                             className={`
                                 relative min-w-[280px] md:min-w-[320px] h-48 rounded-2xl p-6 
-                                flex flex-col justify-between shadow-lg snap-center
+                                flex flex-col justify-between shadow-lg snap-center cursor-pointer text-left
                                 bg-gradient-to-br ${style.gradient} 
-                                text-white overflow-hidden transition-transform hover:scale-[1.02]
+                                text-white overflow-hidden transition-all hover:scale-[1.02] hover:shadow-xl
+                                border-none outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
                             `}
                         >
                             {/* Background Effects */}
@@ -98,7 +118,7 @@ export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
                             <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-40 h-40 bg-black/20 rounded-full blur-3xl" />
 
                             {/* Top Row: Logo & Name */}
-                            <div className="relative z-10 flex justify-between items-start">
+                            <div className="relative z-10 flex justify-between items-start w-full">
                                 <div>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={style.logo} alt={style.name} className="h-6 object-contain bg-white/20 p-1 rounded backdrop-blur-md" />
@@ -113,7 +133,7 @@ export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
                             </div>
 
                             {/* Bottom Row: Chip & Number */}
-                            <div className="relative z-10 flex justify-between items-end">
+                            <div className="relative z-10 flex justify-between items-end w-full">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-7 rounded bg-gradient-to-tr from-yellow-200 to-yellow-400 opacity-80 shadow-sm border border-yellow-500/30 relative overflow-hidden">
                                         <div className="absolute top-1/2 left-0 w-full h-[1px] bg-yellow-600/30" />
@@ -129,10 +149,34 @@ export function CreditCardsWidget({ transactions }: CreditCardsWidgetProps) {
                                     <span className="text-sm font-bold uppercase tracking-wider">{card.brand}</span>
                                 </div>
                             </div>
-                        </div>
+                        </button>
                     )
                 })}
             </div>
+
+            <Dialog open={!!selectedCard} onOpenChange={(open) => !open && setSelectedCard(null)}>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {selectedCard?.name}
+                            <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                •••• {selectedCard?.last_4_digits}
+                            </span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Extrato completo e histórico de faturas deste cartão.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4">
+                        <TransactionList
+                            transactions={selectedCardTransactions}
+                            isLoading={false}
+                            onUpdate={onUpdate || (() => { })}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
