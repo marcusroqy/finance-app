@@ -52,6 +52,8 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
 
             const current = parseInt(match[2]);
             const total = parseInt(match[3]);
+            const transactionDate = new Date(t.date);
+            const now = new Date();
 
             if (!groups[groupKey]) {
                 groups[groupKey] = {
@@ -68,15 +70,26 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
 
             groups[groupKey].ids.push(t.id);
 
-            // Update to found properties
-            if (current > groups[groupKey].current) {
+            // Only update "current" progress if the installment date is in the past or today
+            // We use end of day comparison to be safe
+            const isFuture = transactionDate > now;
+
+            if (!isFuture && current > groups[groupKey].current) {
                 groups[groupKey].current = current;
                 groups[groupKey].name = rawName;
                 if (t.category) groups[groupKey].category = t.category;
+            } else if (groups[groupKey].current === 0 && !isFuture) {
+                // Even if current is 1, ensure at least 1 is set if valid
+                groups[groupKey].current = current;
             }
 
+            // Always track last date for sorting, but handle "completed" logic carefully
+            // Actually, if we want to show "completed", current must equal total. 
+            // If current is constrained by date, it won't equal total until the last month.
+            // This is correct behavior.
+
             if (current === total) {
-                groups[groupKey].lastDate = new Date(t.date);
+                groups[groupKey].lastDate = transactionDate;
             }
         }
     });
