@@ -58,3 +58,10 @@ export interface HouseholdInvite {
     household?: Household
 }
 
+export interface CreditCard {
+    id: string
+    name: string
+    last_4_digits: string
+    brand: string
+    color: string
+}

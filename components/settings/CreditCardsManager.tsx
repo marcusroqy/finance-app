@@ -20,13 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 
-interface CreditCard {
-    id: string
-    name: string
-    last_4_digits: string
-    brand: string
-    color: string
-}
+import { CreditCard } from "@/lib/types"
 
 export function CreditCardsManager() {
     const [cards, setCards] = useState<CreditCard[]>([])
