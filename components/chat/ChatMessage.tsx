@@ -1,22 +1,30 @@
 import { cn } from "@/lib/utils"
 // import { BeatLoader } from "react-spinners" // If I had it, but I'll likely just use text for now
 
+
+export interface MessageOption {
+    label: string
+    value: string
+    action?: string
+}
+
 export interface Message {
     id: string
     role: "user" | "assistant"
     content: string
     createdAt: Date
+    options?: MessageOption[]
 }
 
 interface ChatMessageProps {
     message: Message
+    onOptionClick?: (option: MessageOption) => void
 }
 
 import { useLanguage } from "@/lib/i18n/language-context"
+import { Sparkles, User, ChevronRight } from "lucide-react"
 
-import { Sparkles, User } from "lucide-react"
-
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onOptionClick }: ChatMessageProps) {
     const { t } = useLanguage()
     const isUser = message.role === "user"
 
@@ -39,6 +47,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                 </div>
+
+                {/* Options/Buttons */}
+                {message.options && message.options.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-500 delay-150">
+                        {message.options.map((option, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => onOptionClick?.(option)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors shadow-sm"
+                            >
+                                {option.label}
+                                <ChevronRight className="w-3 h-3 opacity-50" />
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     )

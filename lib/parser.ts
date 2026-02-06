@@ -14,6 +14,7 @@ export interface ParsedTransaction {
     paymentMethod?: 'pix' | 'credit' | 'debit' | 'cash' | 'trust' | 'unknown';
     brand?: string;
     brandLogo?: string;
+    cardId?: string;
 }
 
 const CATEGORIES: Record<string, string[]> = {

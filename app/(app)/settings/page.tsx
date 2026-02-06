@@ -17,9 +17,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LanguageSelector } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { HouseholdSettings } from "@/components/household/HouseholdSettings"
+import { CreditCardsManager } from "@/components/settings/CreditCardsManager"
 
 // Icons
-import { User, Mail, Globe, Camera, Save, AlertTriangle, Download, Trash2, Loader2, Users } from "lucide-react"
+import { User, Mail, Globe, Camera, Save, AlertTriangle, Download, Trash2, Loader2, Users, CreditCard } from "lucide-react"
 
 export default function SettingsPage() {
     const router = useRouter()
@@ -144,11 +145,15 @@ export default function SettingsPage() {
             </div>
 
             <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="profile">Perfil</TabsTrigger>
                     <TabsTrigger value="household" className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4 hidden md:block" />
                         Família
+                    </TabsTrigger>
+                    <TabsTrigger value="cards" className="flex items-center gap-1">
+                        <CreditCard className="h-4 w-4 hidden md:block" />
+                        Cartões
                     </TabsTrigger>
                     <TabsTrigger value="preferences">Preferências</TabsTrigger>
                     <TabsTrigger value="data">Dados</TabsTrigger>
@@ -279,8 +284,14 @@ export default function SettingsPage() {
                     </Card>
                 </TabsContent>
 
+                {/* CARDS TAB */}
+                <TabsContent value="cards" className="space-y-6">
+                    <CreditCardsManager />
+                </TabsContent>
+
                 {/* DATA TAB */}
                 <TabsContent value="data" className="space-y-6">
+
                     <Card>
                         <CardHeader>
                             <CardTitle>Exportar Dados</CardTitle>

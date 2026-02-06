@@ -4,15 +4,17 @@ import * as React from "react"
 import { ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 
 import { ChatInput } from "./ChatInput"
-import { ChatMessage, Message } from "./ChatMessage"
+import { ChatMessage, Message, MessageOption } from "./ChatMessage"
 import { parseMessage, ParsedTransaction } from "@/lib/parser"
 import { useLanguage } from "@/lib/i18n/language-context"
 
 export function ChatContainer() {
+
     const { t } = useLanguage()
     const [messages, setMessages] = React.useState<Message[]>([])
     const [isSending, setIsSending] = React.useState(false)
     const [pendingTransaction, setPendingTransaction] = React.useState<ParsedTransaction | null>(null)
+    const [cards, setCards] = React.useState<any[]>([]) // Store user cards
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -22,6 +24,38 @@ export function ChatContainer() {
     React.useEffect(() => {
         scrollToBottom()
     }, [messages])
+
+    // Fetch cards on mount
+    React.useEffect(() => {
+        fetch('/api/credit-cards')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setCards(data);
+            })
+            .catch(err => console.error("Failed to fetch cards", err));
+    }, []);
+
+    const handleOptionClick = async (option: MessageOption) => {
+        // Handle Card Selection
+        if (option.action === 'select-card' && pendingTransaction) {
+            const draft = { ...pendingTransaction };
+            draft.cardId = option.value;
+            draft.paymentMethod = 'credit'; // Ensure credit is set
+            draft.status = 'success';
+
+            // Add user message to simulate selection
+            const userMsg: Message = {
+                id: Date.now().toString(),
+                role: 'user',
+                content: option.label,
+                createdAt: new Date()
+            };
+            setMessages(prev => [...prev, userMsg]);
+
+            setPendingTransaction(null);
+            await saveTransaction(draft);
+        }
+    }
 
     const handleSendMessage = async (content: string) => {
         if (!content.trim()) return
@@ -128,6 +162,25 @@ export function ChatContainer() {
                     setMessages(prev => [...prev, aiResponse]);
                     // Mark draft as needing details
                     parsed.status = 'needs_details';
+                    setPendingTransaction(parsed);
+                    return;
+                }
+
+                // CREDIT CARD CHECK: If method is credit (or implied) AND we have cards AND none selected
+                if (parsed.type === 'expense' && parsed.paymentMethod === 'credit' && cards.length > 0 && !parsed.cardId) {
+                    const aiResponse: Message = {
+                        id: (Date.now() + 1).toString(),
+                        role: "assistant",
+                        content: `Entendido. Qual cartão você usou?`,
+                        createdAt: new Date(),
+                        options: cards.map(c => ({
+                            label: `${c.name} ••${c.last_4_digits}`,
+                            value: c.id,
+                            action: 'select-card'
+                        }))
+                    };
+                    setMessages(prev => [...prev, aiResponse]);
+                    parsed.status = 'needs_details'; // or a new status 'needs_card'
                     setPendingTransaction(parsed);
                     return;
                 }
@@ -353,6 +406,7 @@ export function ChatContainer() {
                 brand: parsed.brand,
                 brandLogo: parsed.brandLogo,
                 installments: parsed.installments,
+                cardId: parsed.cardId,
             }),
         });
 
@@ -437,7 +491,7 @@ export function ChatContainer() {
                     </div>
                 ) : (
                     messages.map((msg) => (
-                        <ChatMessage key={msg.id} message={msg} />
+                        <ChatMessage key={msg.id} message={msg} onOptionClick={handleOptionClick} />
                     ))
                 )}
                 {isSending && (

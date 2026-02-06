@@ -7,6 +7,7 @@ interface ExtendedDTO extends CreateTransactionDTO {
     brand?: string;
     brandLogo?: string;
     installments?: number;
+    cardId?: string;
 }
 
 export async function POST(request: Request) {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
                     date: newDate.toISOString(),
                     brand: body.brand,
                     brand_logo_url: body.brandLogo,
+                    card_id: body.cardId,
                     created_at: new Date().toISOString(), // Supabase might handle this but good to be explicit for bulk
                 });
             }
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
                     date: body.date,
                     brand: body.brand,
                     brand_logo_url: body.brandLogo,
+                    card_id: body.cardId,
                 })
                 .select()
                 .single()
