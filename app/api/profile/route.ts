@@ -16,17 +16,50 @@ export async function GET() {
         .eq('id', user.id)
         .single()
 
-    // If profile doesn't exist yet, we might return just email from auth or basic info
+    // Prepared auth data
+    const authData = {
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+        email: user.email
+    };
+
+    // If profile missing, create it now (Self-Heal)
     if (error && error.code === 'PGRST116') {
-        return NextResponse.json({
+        const newProfile = {
             id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || ''
-        })
+            ...authData,
+            updated_at: new Date().toISOString()
+        };
+        // Fire and forget upsert
+        await supabase.from('profiles').upsert(newProfile);
+        return NextResponse.json(newProfile);
     }
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Check if we need to sync/fill missing fields
+    let needsUpdate = false;
+    const updates: any = { id: user.id };
+
+    if (!data.full_name && authData.full_name) {
+        data.full_name = authData.full_name;
+        updates.full_name = authData.full_name;
+        needsUpdate = true;
+    }
+
+    if (!data.avatar_url && authData.avatar_url) {
+        data.avatar_url = authData.avatar_url;
+        updates.avatar_url = authData.avatar_url;
+        needsUpdate = true;
+    }
+
+    // If we filled in missing data, save it to DB
+    if (needsUpdate) {
+        supabase.from('profiles').upsert(updates).then(({ error }) => {
+            if (error) console.error("Auto-sync profile failed:", error);
+        });
     }
 
     // Merge with email from auth just in case
