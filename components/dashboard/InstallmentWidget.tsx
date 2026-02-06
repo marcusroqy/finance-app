@@ -40,6 +40,9 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
     const [newAmount, setNewAmount] = useState("")
     const [isSaving, setIsSaving] = useState(false)
 
+    const [isAdvancing, setIsAdvancing] = useState(false)
+    const [installmentsToAdvance, setInstallmentsToAdvance] = useState(0)
+
     // 1. Grouping Logic
     const groups: Record<string, InstallmentGroup> = {};
 
@@ -118,6 +121,8 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
         setNewCategory(group.category || "General");
         setNewBrand(group.brand || "");
         setNewAmount(group.amount.toString());
+        setIsAdvancing(false);
+        setInstallmentsToAdvance(0);
     }
 
     const handleSave = async () => {
@@ -145,6 +150,54 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
             setEditingGroup(null);
         } catch (error) {
             console.error("Failed to update", error);
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    const handleAdvance = async () => {
+        if (!editingGroup || installmentsToAdvance === 0) return;
+        setIsSaving(true);
+
+        try {
+            // Find the active transaction IDs (future ones) to advance
+            // We need to look at all transactions again to find the ones for this group
+            // that are in the future, and pick the first N of them.
+
+            // Re-filter transactions for this group
+            const groupTransactions = transactions.filter(t => editingGroup.ids.includes(t.id));
+
+            // Sort by installment number (asc)
+            const futureTransactions = groupTransactions
+                .filter(t => {
+                    const match = t.description.match(/\((\d+)\/(\d+)\)/);
+                    if (!match) return false;
+                    const n = parseInt(match[1]);
+                    return n > editingGroup.current; // only future ones
+                })
+                .sort((a, b) => {
+                    const matchA = a.description.match(/\((\d+)\//);
+                    const matchB = b.description.match(/\((\d+)\//);
+                    return (parseInt(matchA?.[1] || '0') - parseInt(matchB?.[1] || '0'));
+                });
+
+            const idsToAdvance = futureTransactions
+                .slice(0, installmentsToAdvance)
+                .map(t => t.id);
+
+            if (idsToAdvance.length > 0) {
+                await fetch('/api/transactions/advance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: idsToAdvance })
+                });
+
+                router.refresh();
+                setEditingGroup(null);
+            }
+
+        } catch (error) {
+            console.error("Failed to advance", error);
         } finally {
             setIsSaving(false);
         }
@@ -216,75 +269,145 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
                             Ajuste valores, nomes e categorias.
                         </DialogDescription>
                     </DialogHeader>
+
                     <div className="grid gap-6 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase">Nome do Item</Label>
-                            <Input
-                                id="name"
-                                value={newName}
-                                onChange={(e) => setNewName(e.target.value)}
-                                className="h-10 bg-zinc-50 dark:bg-zinc-800/50"
-                                placeholder="Ex: Macbook Pro"
-                            />
+                        {/* TABS for Edit vs Advance */}
+                        <div className="text-sm font-medium text-center text-muted-foreground border-b border-border flex gap-4 mb-2">
+                            <button
+                                onClick={() => setIsAdvancing(false)}
+                                className={`pb-2 border-b-2 transition-all px-4 ${!isAdvancing ? 'text-foreground border-foreground' : 'border-transparent hover:text-foreground/80'}`}
+                            >
+                                Editar Detalhes
+                            </button>
+                            <button
+                                onClick={() => setIsAdvancing(true)}
+                                className={`pb-2 border-b-2 transition-all px-4 ${isAdvancing ? 'text-foreground border-foreground' : 'border-transparent hover:text-foreground/80'}`}
+                            >
+                                Adiantar Parcelas
+                            </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
-                                    <DollarSign className="w-3 h-3" /> Valor (Mês)
-                                </Label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-zinc-400 text-sm">R$</span>
+                        {!isAdvancing ? (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase">Nome do Item</Label>
                                     <Input
-                                        value={newAmount}
-                                        onChange={(e) => setNewAmount(e.target.value)}
-                                        type="number"
-                                        step="0.01"
-                                        className="h-10 pl-9 bg-zinc-50 dark:bg-zinc-800/50"
-                                        placeholder="0.00"
+                                        id="name"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="h-10 bg-zinc-50 dark:bg-zinc-800/50"
+                                        placeholder="Ex: Macbook Pro"
                                     />
                                 </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
-                                    <Tags className="w-3 h-3" /> Categoria
-                                </Label>
-                                <Select value={newCategory} onValueChange={setNewCategory}>
-                                    <SelectTrigger className="h-10 bg-zinc-50 dark:bg-zinc-800/50">
-                                        <SelectValue placeholder="Selecione" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="General">Geral</SelectItem>
-                                        <SelectItem value="Shopping">Shopping</SelectItem>
-                                        <SelectItem value="Food">Alimentação</SelectItem>
-                                        <SelectItem value="Transport">Transporte</SelectItem>
-                                        <SelectItem value="Entertainment">Lazer</SelectItem>
-                                        <SelectItem value="Health">Saúde</SelectItem>
-                                        <SelectItem value="Utilities">Contas</SelectItem>
-                                        <SelectItem value="Salary">Salário</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="brand" className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
-                                <Building2 className="w-3 h-3" /> Marca
-                            </Label>
-                            <Input
-                                id="brand"
-                                value={newBrand}
-                                onChange={(e) => setNewBrand(e.target.value)}
-                                className="h-10 bg-zinc-50 dark:bg-zinc-800/50"
-                                placeholder="Ex: Apple"
-                            />
-                        </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
+                                            <DollarSign className="w-3 h-3" /> Valor (Mês)
+                                        </Label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-2.5 text-zinc-400 text-sm">R$</span>
+                                            <Input
+                                                value={newAmount}
+                                                onChange={(e) => setNewAmount(e.target.value)}
+                                                type="number"
+                                                step="0.01"
+                                                className="h-10 pl-9 bg-zinc-50 dark:bg-zinc-800/50"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
+                                            <Tags className="w-3 h-3" /> Categoria
+                                        </Label>
+                                        <Select value={newCategory} onValueChange={setNewCategory}>
+                                            <SelectTrigger className="h-10 bg-zinc-50 dark:bg-zinc-800/50">
+                                                <SelectValue placeholder="Selecione" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="General">Geral</SelectItem>
+                                                <SelectItem value="Shopping">Shopping</SelectItem>
+                                                <SelectItem value="Food">Alimentação</SelectItem>
+                                                <SelectItem value="Transport">Transporte</SelectItem>
+                                                <SelectItem value="Entertainment">Lazer</SelectItem>
+                                                <SelectItem value="Health">Saúde</SelectItem>
+                                                <SelectItem value="Utilities">Contas</SelectItem>
+                                                <SelectItem value="Salary">Salário</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="brand" className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-2">
+                                        <Building2 className="w-3 h-3" /> Marca
+                                    </Label>
+                                    <Input
+                                        id="brand"
+                                        value={newBrand}
+                                        onChange={(e) => setNewBrand(e.target.value)}
+                                        className="h-10 bg-zinc-50 dark:bg-zinc-800/50"
+                                        placeholder="Ex: Apple"
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="bg-muted/50 p-4 rounded-xl border space-y-2">
+                                    <h4 className="font-medium text-sm flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Marcar como paga
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground">
+                                        Selecione quantas parcelas futuras você deseja adiantar (marcar como pagas hoje).
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <Label>Total Restante: {editingGroup?.total! - editingGroup?.current!} parcelas</Label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {[1, 2, 3, 4, 5, 12].map(n => {
+                                            if (n > (editingGroup?.total! - editingGroup?.current!)) return null;
+                                            return (
+                                                <Button
+                                                    key={n}
+                                                    variant={installmentsToAdvance === n ? "default" : "outline"}
+                                                    onClick={() => setInstallmentsToAdvance(n)}
+                                                    className="h-9 text-xs"
+                                                >
+                                                    +{n}
+                                                </Button>
+                                            )
+                                        })}
+                                        <Button
+                                            variant={installmentsToAdvance === (editingGroup?.total! - editingGroup?.current!) ? "default" : "outline"}
+                                            onClick={() => setInstallmentsToAdvance(editingGroup?.total! - editingGroup?.current!)}
+                                            className="h-9 text-xs"
+                                        >
+                                            Todas
+                                        </Button>
+                                    </div>
+                                    {installmentsToAdvance > 0 && (
+                                        <p className="text-xs text-muted-foreground bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
+                                            Isso marcará <b>{installmentsToAdvance}</b> parcelas como pagas hoje.
+                                            Valor total: <b>R$ {(installmentsToAdvance * (editingGroup?.amount || 0)).toFixed(2)}</b>
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setEditingGroup(null)}>Cancelar</Button>
-                        <Button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                            {isSaving ? "Salvando..." : "Confirmar Alterações"}
-                        </Button>
+                        {!isAdvancing ? (
+                            <Button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                {isSaving ? "Salvando..." : "Confirmar Alterações"}
+                            </Button>
+                        ) : (
+                            <Button onClick={handleAdvance} disabled={isSaving || installmentsToAdvance === 0} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                {isSaving ? "Processando..." : "Confirmar Pagamento"}
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
