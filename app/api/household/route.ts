@@ -62,10 +62,16 @@ export async function GET() {
         .eq("id", membership.household_id)
         .single()
 
-    // Get all members (simple query without profile join)
+    // Get all members with profile data
     const { data: members } = await supabase
         .from("household_members")
-        .select("id, user_id, role, joined_at")
+        .select(`
+            id, 
+            user_id, 
+            role, 
+            joined_at, 
+            profiles:user_id ( full_name, email, avatar_url )
+        `)
         .eq("household_id", membership.household_id)
 
     // Get pending invites
