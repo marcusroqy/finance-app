@@ -9,6 +9,7 @@ import { FinancialChart } from "@/components/dashboard/FinancialChart"
 import { CategoryChart } from "@/components/dashboard/CategoryChart"
 import { InstallmentWidget } from "@/components/dashboard/InstallmentWidget"
 import { Transaction } from "@/lib/types"
+import { CreditCardsWidget } from "@/components/dashboard/CreditCardsWidget"
 
 export default function DashboardPage() {
     const { t } = useLanguage()
