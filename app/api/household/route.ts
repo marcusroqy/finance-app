@@ -62,17 +62,28 @@ export async function GET() {
         .eq("id", membership.household_id)
         .single()
 
-    // Get all members with profile data
+    // Get all members (simple query)
     const { data: members } = await supabase
         .from("household_members")
-        .select(`
-            id, 
-            user_id, 
-            role, 
-            joined_at, 
-            profiles:user_id ( full_name, email, avatar_url )
-        `)
+        .select("id, user_id, role, joined_at")
         .eq("household_id", membership.household_id)
+
+    // Manual Fetch Profiles to avoid FK issues
+    let enrichedMembers = members || [];
+    if (members && members.length > 0) {
+        const userIds = members.map(m => m.user_id);
+        const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name, email, avatar_url")
+            .in("id", userIds);
+
+        if (profiles) {
+            enrichedMembers = members.map(m => ({
+                ...m,
+                profiles: profiles.find(p => p.id === m.user_id) || null
+            }));
+        }
+    }
 
     // Get pending invites
     const { data: invites } = await supabase
@@ -84,7 +95,7 @@ export async function GET() {
     return NextResponse.json({
         household,
         role: membership.role,
-        members: members || [],
+        members: enrichedMembers,
         pendingInvites: invites || []
     })
 }
