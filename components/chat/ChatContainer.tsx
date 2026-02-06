@@ -373,23 +373,23 @@ export function ChatContainer() {
 
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-zinc-50/50 dark:bg-zinc-950/50 relative overflow-hidden supports-[height:100dvh]:h-[100dvh]">
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth pb-32">
+        <div className="flex flex-col h-[100dvh] md:h-full bg-zinc-50/50 dark:bg-zinc-950/50 relative overflow-hidden fixed inset-0 md:static md:inset-auto z-10">
+            <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 scroll-smooth pb-28 pt-2">
                 {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
-                        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/5 shrink-0">
-                            <span className="text-3xl">✨</span>
+                    <div className="h-full flex flex-col items-center justify-center p-3 md:p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
+                        <div className="w-14 h-14 md:w-16 md:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/5 shrink-0">
+                            <span className="text-2xl md:text-3xl">✨</span>
                         </div>
 
-                        <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent text-center mb-2">
+                        <h2 className="text-xl md:text-3xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent text-center mb-1 md:mb-2">
                             {t.chat.welcome}
                         </h2>
 
-                        <p className="text-muted-foreground text-center max-w-sm mb-8 text-sm md:text-base leading-relaxed">
+                        <p className="text-muted-foreground text-center max-w-sm mb-4 md:mb-8 text-xs md:text-base leading-relaxed">
                             {t.chat.description}
                         </p>
 
-                        <div className="w-full max-w-2xl grid gap-6 md:grid-cols-2 md:gap-8 pb-4">
+                        <div className="w-full max-w-2xl grid gap-3 md:gap-6 grid-cols-1 md:grid-cols-2 pb-4 overflow-y-auto max-h-[50vh] md:max-h-none">
                             {/* Expense Examples */}
                             <div className="space-y-3">
                                 <h3 className="text-xs font-semibold text-rose-500 uppercase tracking-wider text-center md:text-left pl-1">
