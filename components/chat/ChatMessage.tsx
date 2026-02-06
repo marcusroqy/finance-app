@@ -21,7 +21,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     const isUser = message.role === "user"
 
     return (
-        <div className={cn("flex gap-3 w-full max-w-3xl mx-auto mb-6", isUser ? "flex-row-reverse" : "flex-row")}>
+        <div className={cn("flex gap-3 w-full max-w-3xl mx-auto mb-6 opacity-0", isUser ? "flex-row-reverse animate-message-in-right" : "flex-row animate-message-in-left")}>
             <div className={cn("flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center shadow-sm ring-1 ring-inset transition-all duration-300", isUser ? "bg-primary text-primary-foreground ring-primary/10" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 ring-zinc-200 dark:ring-zinc-800")}>
                 {isUser ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4 text-emerald-500 fill-emerald-500/20" />}
             </div>

@@ -377,8 +377,8 @@ export function ChatContainer() {
             <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 scroll-smooth pb-24 md:pb-32 pt-2">
                 {messages.length === 0 ? (
                     <div className="min-h-full flex flex-col items-center justify-start pt-8 p-3 md:p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
-                        <div className="w-14 h-14 md:w-16 md:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/5 shrink-0">
-                            <span className="text-2xl md:text-3xl">✨</span>
+                        <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/10 shrink-0 animate-[float_6s_ease-in-out_infinite]">
+                            <span className="text-2xl md:text-3xl animate-[pulse_2s_ease-in-out_infinite]">✨</span>
                         </div>
 
                         <h2 className="text-xl md:text-3xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent text-center mb-1 md:mb-2">
@@ -400,12 +400,13 @@ export function ChatContainer() {
                                         <button
                                             key={i}
                                             onClick={() => handleSendMessage(example)}
-                                            className="w-full text-left p-3 rounded-xl border bg-card hover:bg-accent/50 hover:border-primary/30 transition-all duration-200 text-sm text-muted-foreground hover:text-foreground flex items-center gap-3 group active:scale-95 touch-manipulation"
+                                            style={{ animationDelay: `${i * 80}ms` }}
+                                            className="w-full text-left p-3 rounded-xl border bg-card/50 backdrop-blur-sm hover:bg-rose-500/5 hover:border-rose-500/30 hover:shadow-lg hover:shadow-rose-500/5 transition-all duration-300 text-sm text-muted-foreground hover:text-foreground flex items-center gap-3 group active:scale-[0.98] touch-manipulation animate-in fade-in slide-in-from-left-2"
                                         >
-                                            <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform shrink-0">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500/20 to-rose-500/5 flex items-center justify-center text-rose-500 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0">
                                                 <ArrowDownCircle className="w-4 h-4" />
                                             </div>
-                                            <span className="truncate">{example}</span>
+                                            <span className="truncate group-hover:translate-x-0.5 transition-transform duration-300">{example}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -421,12 +422,13 @@ export function ChatContainer() {
                                         <button
                                             key={i}
                                             onClick={() => handleSendMessage(example)}
-                                            className="w-full text-left p-3 rounded-xl border bg-card hover:bg-accent/50 hover:border-primary/30 transition-all duration-200 text-sm text-muted-foreground hover:text-foreground flex items-center gap-3 group active:scale-95 touch-manipulation"
+                                            style={{ animationDelay: `${(i + 4) * 80}ms` }}
+                                            className="w-full text-left p-3 rounded-xl border bg-card/50 backdrop-blur-sm hover:bg-emerald-500/5 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 text-sm text-muted-foreground hover:text-foreground flex items-center gap-3 group active:scale-[0.98] touch-manipulation animate-in fade-in slide-in-from-right-2"
                                         >
-                                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform shrink-0">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 shrink-0">
                                                 <ArrowUpCircle className="w-4 h-4" />
                                             </div>
-                                            <span className="truncate">{example}</span>
+                                            <span className="truncate group-hover:translate-x-0.5 transition-transform duration-300">{example}</span>
                                         </button>
                                     ))}
                                 </div>

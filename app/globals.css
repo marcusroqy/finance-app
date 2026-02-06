@@ -155,3 +155,64 @@
 @utility h-dvh {
   height: 100dvh;
 }
+
+/* Premium Animations */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes message-in-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-16px) scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes message-in-right {
+  0% {
+    opacity: 0;
+    transform: translateX(16px) scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-message-in-left {
+  animation: message-in-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-message-in-right {
+  animation: message-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
