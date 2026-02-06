@@ -102,8 +102,8 @@ export function TransactionItem({ transaction, onDelete, onEdit }: TransactionIt
 
     return (
         <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-zinc-100 dark:border-zinc-800 group hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-            <div className="flex items-center gap-4">
-                <div className={`relative h-10 w-10 flex items-center justify-center rounded-full overflow-hidden ${!logoUrl ? (isIncome ? "bg-emerald-500/10" : "bg-rose-500/10") : "bg-white dark:bg-zinc-800"}`}>
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className={`relative h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-full overflow-hidden ${!logoUrl ? (isIncome ? "bg-emerald-500/10" : "bg-rose-500/10") : "bg-white dark:bg-zinc-800"}`}>
                     {logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -120,13 +120,13 @@ export function TransactionItem({ transaction, onDelete, onEdit }: TransactionIt
                     {/* Fallback Icon (hidden if logo loads successfully) */}
                     <CategoryIcon className={`w-5 h-5 ${colorClass} ${logoUrl ? "hidden" : ""}`} />
                 </div>
-                <div>
-                    <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate max-w-[120px] sm:max-w-none">
                             {brandName ? brandName : displayDescription}
                         </p>
                         {installmentBadge && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium whitespace-nowrap">
                                 {installmentBadge}
                             </span>
                         )}
