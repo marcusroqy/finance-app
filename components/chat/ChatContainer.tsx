@@ -36,25 +36,50 @@ export function ChatContainer() {
     }, []);
 
     const handleOptionClick = async (option: MessageOption) => {
+        if (!pendingTransaction) return;
+
         // Handle Card Selection
-        if (option.action === 'select-card' && pendingTransaction) {
+        if (option.action === 'select-card') {
             const draft = { ...pendingTransaction };
             draft.cardId = option.value;
-            draft.paymentMethod = 'credit'; // Ensure credit is set
+            draft.paymentMethod = 'credit';
             draft.status = 'success';
 
             // Add user message to simulate selection
-            const userMsg: Message = {
-                id: Date.now().toString(),
-                role: 'user',
-                content: option.label,
-                createdAt: new Date()
-            };
-            setMessages(prev => [...prev, userMsg]);
+            addUserMessage(option.label);
 
             setPendingTransaction(null);
             await saveTransaction(draft);
+        } else if (option.action === 'select-method' && option.value === 'other_method') {
+            // User excluded credit cards
+            const draft = { ...pendingTransaction };
+
+            // Now ask for specific method if unknown
+            const aiResponse: Message = {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: "Ah, tranquilo. Foi no Pix, Débito ou Dinheiro?",
+                createdAt: new Date()
+            };
+
+            addUserMessage(option.label);
+            setMessages(prev => [...prev, aiResponse]);
+
+            // Update status so next text input is processed as payment method
+            draft.status = 'needs_details';
+            draft.paymentMethod = 'unknown'; // Force ask
+            setPendingTransaction(draft);
         }
+    }
+
+    const addUserMessage = (text: string) => {
+        const userMsg: Message = {
+            id: Date.now().toString(),
+            role: 'user',
+            content: text,
+            createdAt: new Date()
+        };
+        setMessages(prev => [...prev, userMsg]);
     }
 
     const handleSendMessage = async (content: string) => {
@@ -166,21 +191,32 @@ export function ChatContainer() {
                     return;
                 }
 
-                // CREDIT CARD CHECK: If method is credit (or implied) AND we have cards AND none selected
-                if (parsed.type === 'expense' && parsed.paymentMethod === 'credit' && cards.length > 0 && !parsed.cardId) {
+                // CREDIT CARD CHECK (Smart Prompt): If expense AND we have cards AND (credit or unknown method)
+                // We want to force a card selection or clarification
+                if (parsed.type === 'expense' && (parsed.paymentMethod === 'credit' || parsed.paymentMethod === 'unknown') && cards.length > 0 && !parsed.cardId) {
+
+                    const options = cards.map(c => ({
+                        label: `${c.name} ••${c.last_4_digits}`,
+                        value: c.id,
+                        action: 'select-card'
+                    }));
+
+                    // Add "Not Credit" option
+                    options.push({
+                        label: 'Outro / Pix / Dinheiro',
+                        value: 'other_method',
+                        action: 'select-method'
+                    });
+
                     const aiResponse: Message = {
                         id: (Date.now() + 1).toString(),
                         role: "assistant",
                         content: `Entendido. Qual cartão você usou?`,
                         createdAt: new Date(),
-                        options: cards.map(c => ({
-                            label: `${c.name} ••${c.last_4_digits}`,
-                            value: c.id,
-                            action: 'select-card'
-                        }))
+                        options: options
                     };
                     setMessages(prev => [...prev, aiResponse]);
-                    parsed.status = 'needs_details'; // or a new status 'needs_card'
+                    parsed.status = 'needs_details';
                     setPendingTransaction(parsed);
                     return;
                 }
