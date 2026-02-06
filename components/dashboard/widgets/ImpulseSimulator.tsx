@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Transaction } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { BrainCircuit, Briefcase, TrendingDown, Info } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ImpulseSimulatorProps {
     transactions: Transaction[]
