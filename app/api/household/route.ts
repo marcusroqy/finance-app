@@ -77,31 +77,44 @@ export async function GET() {
             .select("id, full_name, email, avatar_url")
             .in("id", userIds);
 
+        // SELF-HEAL: If current user profile is missing in the fetched list, upsert it!
+        const currentUserProfile = profiles?.find(p => p.id === user.id);
+        if (!currentUserProfile) {
+            console.log("[Household API] Self-healing missing profile for:", user.id);
+            const fallbackProfile = {
+                id: user.id,
+                full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
+                email: user.email,
+                avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+                updated_at: new Date().toISOString()
+            };
+
+            // Fire and forget upsert to fix DB
+            await supabase.from("profiles").upsert(fallbackProfile);
+
+            // Add to our local list for display
+            if (profiles) profiles.push(fallbackProfile as any);
+        }
+
         if (profiles) {
-            console.log("[Household API] DEBUG Profiles found:", profiles);
-            console.log("[Household API] DEBUG User members:", members.map(m => m.user_id));
+            console.log("[Household API] DEBUG Profiles:", profiles);
 
             enrichedMembers = members.map(m => {
-                let existingProfile: any = profiles.find(p => p.id === m.user_id) || {};
+                let profile: any = profiles.find(p => p.id === m.user_id);
 
-                // For current user, ALWAYS merge secure auth data + metadata to ensure we have a name/email
-                if (m.user_id === user.id) {
-                    return {
-                        ...m,
-                        profiles: {
-                            ...existingProfile,
-                            id: user.id,
-                            full_name: user.user_metadata?.full_name || user.user_metadata?.name || existingProfile.full_name || user.email?.split('@')[0],
-                            email: user.email || existingProfile.email,
-                            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || existingProfile.avatar_url
-                        }
+                // Fallback for current user if still missing (shouldn't happen with self-heal)
+                if (!profile && m.user_id === user.id) {
+                    profile = {
+                        id: user.id,
+                        full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+                        email: user.email,
+                        avatar_url: user.user_metadata?.avatar_url
                     };
                 }
 
-                // For others, return what we found in DB (or null object if nothing found)
                 return {
                     ...m,
-                    profiles: existingProfile.id ? existingProfile : null
+                    profiles: profile || null
                 };
             });
         }
