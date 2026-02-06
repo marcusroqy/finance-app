@@ -3,10 +3,10 @@
 import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Transaction } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
-import { ShoppingBag, ArrowRight, BrainCircuit } from "lucide-react"
+import { BrainCircuit, Briefcase, TrendingDown, Info } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ImpulseSimulatorProps {
     transactions: Transaction[]
@@ -14,30 +14,62 @@ interface ImpulseSimulatorProps {
 }
 
 export function ImpulseSimulator({ transactions, currentBalance }: ImpulseSimulatorProps) {
-    const [amount, setAmount] = React.useState("")
+    const [displayValue, setDisplayValue] = React.useState("")
+    const [rawValue, setRawValue] = React.useState(0)
 
-    // Copy burn rate logic (could extract to hook later)
-    const calculateBurnRate = () => {
+    // Handle currency input formatting
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, "")
+        const numberValue = Number(value) / 100
+
+        setRawValue(numberValue)
+
+        if (value === "") {
+            setDisplayValue("")
+            return
+        }
+
+        setDisplayValue(new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(numberValue))
+    }
+
+    // 1. Calculate Burn Rate (Expenses / 30 days)
+    const calculateMetrics = () => {
         const today = new Date()
         const thirtyDaysAgo = new Date()
         thirtyDaysAgo.setDate(today.getDate() - 30)
 
+        // Expenses
         const recentExpenses = transactions.filter(t => {
             const tDate = new Date(t.date)
             return t.type === 'expense' && tDate >= thirtyDaysAgo
         })
-
         const totalSpent = recentExpenses.reduce((sum, t) => sum + Number(t.amount), 0)
-        if (totalSpent === 0) return 0
-        return totalSpent / 30
+        const dailyBurnRate = totalSpent > 0 ? totalSpent / 30 : 0
+
+        // Income
+        const recentIncome = transactions.filter(t => {
+            const tDate = new Date(t.date)
+            return t.type === 'income' && tDate >= thirtyDaysAgo
+        })
+        const totalIncome = recentIncome.reduce((sum, t) => sum + Number(t.amount), 0)
+        const dailyIncome = totalIncome > 0 ? totalIncome / 30 : 0 // Income per calendar day
+
+        // Work days (assuming 22 work days/mo standard for simpler mental model, or 30 for daily avg)
+        // Let's use daily avg income to be consistent
+
+        return { dailyBurnRate, dailyIncome }
     }
 
-    const burnRate = calculateBurnRate()
-    const purchaseAmount = parseFloat(amount) || 0
+    const { dailyBurnRate, dailyIncome } = calculateMetrics()
 
-    const costInDays = burnRate > 0 ? Math.round(purchaseAmount / burnRate) : 0
+    // Visual calculations
+    const costInSurvivalDays = dailyBurnRate > 0 ? (rawValue / dailyBurnRate).toFixed(1) : "0"
+    const costInWorkDays = dailyIncome > 0 ? (rawValue / dailyIncome).toFixed(1) : "?"
 
-    // Opportunity cost examples (randomized or static)
+    // Opportunity cost examples
     const getOpportunityCost = (val: number) => {
         if (val < 50) return "Isso é quase 2 assinaturas de streaming."
         if (val < 150) return "Daria para pedir 3 jantares fora."
@@ -58,61 +90,62 @@ export function ImpulseSimulator({ transactions, currentBalance }: ImpulseSimula
                 <div className="space-y-2">
                     <label className="text-xs text-muted-foreground">Quer comprar algo? Digite o valor:</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
                         <Input
-                            type="number"
-                            placeholder="0,00"
-                            className="pl-9"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="R$ 0,00"
+                            value={displayValue}
+                            onChange={handleInputChange}
+                            className="font-mono"
                         />
                     </div>
                 </div>
 
-                {purchaseAmount > 0 && (
-                    <div className="rounded-lg bg-background/50 border p-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-start gap-3">
+                {rawValue > 0 && (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+
+                        {/* Survival Cost */}
+                        <div className="rounded-lg bg-background/50 border p-3 flex items-start gap-3">
                             <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mt-1">
-                                <TrendingDownIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                             </div>
                             <div>
                                 <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                                    -{costInDays} dias de vida
+                                    -{costInSurvivalDays} dias de vida
                                 </p>
-                                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                                    {getOpportunityCost(purchaseAmount)}
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Baseado no seu custo de vida mensal (Gasto).
                                 </p>
                             </div>
                         </div>
+
+                        {/* Work Cost (New) */}
+                        <div className="rounded-lg bg-background/50 border p-3 flex items-start gap-3">
+                            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full mt-1">
+                                <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                    {costInWorkDays} dias de trabalho
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    O tempo que você levou para ganhar esse dinheiro (Renda).
+                                </p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground italic pl-1 border-l-2 border-indigo-200 pl-2">
+                            💡 {getOpportunityCost(rawValue)}
+                        </p>
                     </div>
                 )}
 
-                {purchaseAmount === 0 && (
+                {rawValue === 0 && (
                     <div className="text-xs text-muted-foreground text-center py-2 opacity-50">
-                        Veja o impacto real antes de gastar.
+                        Veja o impacto real (Tempo x Dinheiro) antes de gastar.
                     </div>
                 )}
             </CardContent>
         </Card>
-    )
-}
-
-function TrendingDownIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-            <polyline points="17 18 23 18 23 12" />
-        </svg>
     )
 }
