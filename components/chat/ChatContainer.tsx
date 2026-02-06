@@ -166,6 +166,36 @@ export function ChatContainer() {
                     return;
                 }
 
+                // CREDIT CARD CHECK (Smart Prompt): Priority over generic "how did you pay"
+                // If expense AND we have cards AND (credit or unknown method)
+                if (parsed.type === 'expense' && (parsed.paymentMethod === 'credit' || parsed.paymentMethod === 'unknown') && cards.length > 0 && !parsed.cardId) {
+
+                    const options = cards.map(c => ({
+                        label: `${c.name} ••${c.last_4_digits}`,
+                        value: c.id,
+                        action: 'select-card'
+                    }));
+
+                    // Add "Not Credit" option
+                    options.push({
+                        label: 'Outro / Pix / Dinheiro',
+                        value: 'other_method',
+                        action: 'select-method'
+                    });
+
+                    const aiResponse: Message = {
+                        id: (Date.now() + 1).toString(),
+                        role: "assistant",
+                        content: `Entendido. Qual cartão você usou?`,
+                        createdAt: new Date(),
+                        options: options
+                    };
+                    setMessages(prev => [...prev, aiResponse]);
+                    parsed.status = 'needs_details';
+                    setPendingTransaction(parsed);
+                    return;
+                }
+
                 // 3. Smart Check: High Value OR Installments & Unknown Payment Method
                 const needsPayment = (!parsed.paymentMethod || parsed.paymentMethod === 'unknown');
                 const isHighValue = parsed.amount > 100;
