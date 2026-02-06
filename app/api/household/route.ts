@@ -78,6 +78,9 @@ export async function GET() {
             .in("id", userIds);
 
         if (profiles) {
+            console.log("[Household API] DEBUG Profiles found:", profiles);
+            console.log("[Household API] DEBUG User members:", members.map(m => m.user_id));
+
             enrichedMembers = members.map(m => {
                 let existingProfile: any = profiles.find(p => p.id === m.user_id) || {};
 
