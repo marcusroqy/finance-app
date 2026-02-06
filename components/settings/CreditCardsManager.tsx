@@ -202,8 +202,8 @@ export function CreditCardsManager() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                            <Button onClick={handleAddCard} disabled={isAdding}>
-                                {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Cartão"}
+                            <Button onClick={handleSaveCard} disabled={isAdding}>
+                                {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingCard ? "Atualizar" : "Salvar Cartão")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
