@@ -111,18 +111,6 @@ export function CreditCardsManager() {
         }
     }
 
-    const getBrandColor = (brand: string) => {
-        switch (brand) {
-            case 'nubank': return 'bg-[#820AD1]';
-            case 'inter': return 'bg-[#FF7A00]';
-            case 'itau': return 'bg-[#EC7000]';
-            case 'xp': return 'bg-[#000000]';
-            case 'c6': return 'bg-[#242424]';
-            case 'visa': return 'bg-[#1A1F71]';
-            case 'mastercard': return 'bg-[#EB001B]';
-            default: return 'bg-zinc-800';
-        }
-    }
 
     return (
         <Card>
@@ -208,27 +196,56 @@ export function CreditCardsManager() {
                     </div>
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2">
-                        {cards.map((card) => (
-                            <div key={card.id} className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-accent/5 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-12 h-8 rounded-md ${getBrandColor(card.brand)} shadow-sm flex items-center justify-center`}>
-                                        <CreditCard className="w-4 h-4 text-white/80" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-sm">{card.name}</p>
-                                        <p className="text-xs text-muted-foreground">•••• {card.last_4_digits}</p>
+                        {cards.map((card) => {
+                            const bankStyle = BANKS[card.brand] || BANKS['mastercard']; // Fallback
+
+                            return (
+                                <div key={card.id} className={`relative overflow-hidden p-5 rounded-2xl border-0 shadow-lg group transition-all hover:scale-[1.02] bg-gradient-to-br ${bankStyle.gradient}`}>
+                                    {/* Background Pattern/Overlay */}
+                                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+                                    <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-2xl" />
+
+                                    <div className={`relative flex items-center justify-between z-10 ${bankStyle.text}`}>
+                                        {/* Left: Chip & Info */}
+                                        <div className="flex flex-col gap-4">
+                                            {/* Chip Icon */}
+                                            <div className="w-10 h-7 rounded bg-gradient-to-tr from-yellow-200 to-yellow-400 opacity-80 shadow-sm border border-yellow-500/30 relative overflow-hidden">
+                                                <div className="absolute top-1/2 left-0 w-full h-[1px] bg-yellow-600/30" />
+                                                <div className="absolute top-0 left-1/3 w-[1px] h-full bg-yellow-600/30" />
+                                                <div className="absolute top-0 right-1/3 w-[1px] h-full bg-yellow-600/30" />
+                                            </div>
+
+                                            <div>
+                                                <p className="font-semibold text-lg tracking-wide">{card.name}</p>
+                                                <p className="font-mono text-sm opacity-80 tracking-widest gap-1 flex">
+                                                    <span>••••</span> <span>••••</span> <span>••••</span> <span>{card.last_4_digits}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Right: Actions & Logo */}
+                                        <div className="flex flex-col justify-between items-end h-full gap-4">
+                                            <div className="bg-white/90 p-1.5 rounded-lg shadow-sm">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                    src={bankStyle.logo}
+                                                    alt={bankStyle.name}
+                                                    className="w-6 h-6 object-contain"
+                                                />
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-white/50 hover:text-white hover:bg-white/10"
+                                                onClick={() => handleDeleteCard(card.id)}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                    onClick={() => handleDeleteCard(card.id)}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
             </CardContent>

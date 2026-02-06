@@ -69,6 +69,107 @@ export const BRANDS: Record<string, { name: string, keywords: string[], logo?: s
     samsung: { name: 'Samsung', keywords: ['samsung', 'galaxy'], logo: 'https://www.google.com/s2/favicons?domain=samsung.com&sz=128' },
 };
 
+export const BANKS: Record<string, { name: string, color: string, logo: string, gradient: string, text: string }> = {
+    nubank: {
+        name: 'Nubank',
+        color: '#820AD1',
+        logo: 'https://www.google.com/s2/favicons?domain=nubank.com.br&sz=128',
+        gradient: 'from-[#820AD1] to-[#4F0680]',
+        text: 'text-white'
+    },
+    inter: {
+        name: 'Inter',
+        color: '#FF7A00',
+        logo: 'https://www.google.com/s2/favicons?domain=inter.co&sz=128', // inter.co covers recent rebrand
+        gradient: 'from-[#FF7A00] to-[#F05F00]',
+        text: 'text-white'
+    },
+    itau: {
+        name: 'Itaú',
+        color: '#EC7000',
+        logo: 'https://www.google.com/s2/favicons?domain=itau.com.br&sz=128',
+        gradient: 'from-[#EC7000] to-[#CF5000]',
+        text: 'text-white'
+    },
+    xp: {
+        name: 'XP',
+        color: '#000000',
+        logo: 'https://www.google.com/s2/favicons?domain=xpi.com.br&sz=128',
+        gradient: 'from-zinc-900 to-black',
+        text: 'text-white'
+    },
+    c6: {
+        name: 'C6 Bank',
+        color: '#242424',
+        logo: 'https://www.google.com/s2/favicons?domain=c6bank.com.br&sz=128',
+        gradient: 'from-zinc-800 to-zinc-950',
+        text: 'text-white'
+    },
+    btg: {
+        name: 'BTG Pactual',
+        color: '#00295F',
+        logo: 'https://www.google.com/s2/favicons?domain=btgpactual.com&sz=128',
+        gradient: 'from-[#00295F] to-[#001E45]',
+        text: 'text-white'
+    },
+    santander: {
+        name: 'Santander',
+        color: '#EC0000',
+        logo: 'https://www.google.com/s2/favicons?domain=santander.com.br&sz=128',
+        gradient: 'from-[#EC0000] to-[#B30000]',
+        text: 'text-white'
+    },
+    bradesco: {
+        name: 'Bradesco',
+        color: '#CC092F',
+        logo: 'https://www.google.com/s2/favicons?domain=banco.bradesco&sz=128',
+        gradient: 'from-[#CC092F] to-[#A3001D]',
+        text: 'text-white'
+    },
+    neon: {
+        name: 'Neon',
+        color: '#00A4D3',
+        logo: 'https://www.google.com/s2/favicons?domain=neon.com.br&sz=128',
+        gradient: 'from-[#00A4D3] to-[#008BB3]',
+        text: 'text-white'
+    },
+    nomad: {
+        name: 'Nomad',
+        color: '#FBC530',
+        logo: 'https://www.google.com/s2/favicons?domain=nomadglobal.com&sz=128',
+        gradient: 'from-[#FFEE00] to-[#FBC530]',
+        text: 'text-zinc-900'
+    },
+    visa: {
+        name: 'Visa',
+        color: '#1A1F71',
+        logo: 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg',
+        gradient: 'from-[#1A1F71] to-[#0D1045]',
+        text: 'text-white'
+    },
+    mastercard: {
+        name: 'Mastercard',
+        color: '#EB001B',
+        logo: 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg',
+        gradient: 'from-[#EB001B] to-[#BF0016]',
+        text: 'text-white'
+    },
+    elo: {
+        name: 'Elo',
+        color: '#00A4E0',
+        logo: 'https://www.google.com/s2/favicons?domain=elo.com.br&sz=128',
+        gradient: 'from-black to-zinc-800', // Elo is usually black cards heavily
+        text: 'text-white'
+    },
+    amex: {
+        name: 'Amex',
+        color: '#277AA9',
+        logo: 'https://www.google.com/s2/favicons?domain=americanexpress.com&sz=128',
+        gradient: 'from-[#277AA9] to-[#1A5C80]',
+        text: 'text-white'
+    }
+};
+
 export function parseMessage(content: string): ParsedTransaction | null {
     const lower = content.toLowerCase();
 
