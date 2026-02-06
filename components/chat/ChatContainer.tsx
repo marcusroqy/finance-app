@@ -221,35 +221,6 @@ export function ChatContainer() {
                     return;
                 }
 
-                // CREDIT CARD CHECK (Smart Prompt): If expense AND we have cards AND (credit or unknown method)
-                // We want to force a card selection or clarification
-                if (parsed.type === 'expense' && (parsed.paymentMethod === 'credit' || parsed.paymentMethod === 'unknown') && cards.length > 0 && !parsed.cardId) {
-
-                    const options = cards.map(c => ({
-                        label: `${c.name} ••${c.last_4_digits}`,
-                        value: c.id,
-                        action: 'select-card'
-                    }));
-
-                    // Add "Not Credit" option
-                    options.push({
-                        label: 'Outro / Pix / Dinheiro',
-                        value: 'other_method',
-                        action: 'select-method'
-                    });
-
-                    const aiResponse: Message = {
-                        id: (Date.now() + 1).toString(),
-                        role: "assistant",
-                        content: `Entendido. Qual cartão você usou?`,
-                        createdAt: new Date(),
-                        options: options
-                    };
-                    setMessages(prev => [...prev, aiResponse]);
-                    parsed.status = 'needs_details';
-                    setPendingTransaction(parsed);
-                    return;
-                }
 
                 // Success immediately
                 await saveTransaction(parsed);
