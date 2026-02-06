@@ -43,6 +43,24 @@ export function ChatContainer() {
             const draft = { ...pendingTransaction };
             draft.cardId = option.value;
             draft.paymentMethod = 'credit';
+
+            // CHECK: If High Value (> 100) and no installments info yet, ASK!
+            if (draft.amount > 100 && !draft.installments) {
+                draft.status = 'needs_details';
+
+                const aiResponse: Message = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: `Beleza, ${option.label.split('•')[0].trim()}. Foi à vista ou parcelado?`,
+                    createdAt: new Date()
+                };
+
+                addUserMessage(option.label);
+                setMessages(prev => [...prev, aiResponse]);
+                setPendingTransaction(draft);
+                return;
+            }
+
             draft.status = 'success';
 
             // Add user message to simulate selection
