@@ -34,6 +34,8 @@ export function CreditCardsManager() {
     const [isAdding, setIsAdding] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
+    const [editingCard, setEditingCard] = useState<CreditCard | null>(null)
+
     // Form State
     const [newName, setNewName] = useState("")
     const [newDigits, setNewDigits] = useState("")
@@ -58,7 +60,24 @@ export function CreditCardsManager() {
         fetchCards()
     }, [])
 
-    const handleAddCard = async () => {
+    const handleEditClick = (card: CreditCard) => {
+        setEditingCard(card)
+        setNewName(card.name)
+        setNewDigits(card.last_4_digits)
+        setNewBrand(card.brand)
+        setNewColor(card.color)
+        setIsDialogOpen(true)
+    }
+
+    const resetForm = () => {
+        setNewName("")
+        setNewDigits("")
+        setNewBrand("mastercard")
+        setNewColor("#000000")
+        setEditingCard(null)
+    }
+
+    const handleSaveCard = async () => {
         if (!newName || !newDigits || newDigits.length !== 4) {
             toast.error("Preencha o nome e os últimos 4 dígitos corretamente.")
             return
@@ -66,8 +85,11 @@ export function CreditCardsManager() {
 
         setIsAdding(true)
         try {
-            const res = await fetch('/api/credit-cards', {
-                method: 'POST',
+            const url = editingCard ? `/api/credit-cards/${editingCard.id}` : '/api/credit-cards';
+            const method = editingCard ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: newName,
@@ -78,13 +100,12 @@ export function CreditCardsManager() {
             })
 
             if (res.ok) {
-                toast.success("Cartão adicionado com sucesso!")
-                setNewName("")
-                setNewDigits("")
+                toast.success(editingCard ? "Cartão atualizado!" : "Cartão adicionado com sucesso!")
+                resetForm()
                 setIsDialogOpen(false)
                 fetchCards()
             } else {
-                toast.error("Erro ao adicionar cartão.")
+                toast.error("Erro ao salvar cartão.")
             }
         } catch (error) {
             toast.error("Erro de conexão.")
@@ -120,7 +141,10 @@ export function CreditCardsManager() {
                     <CardTitle>Meus Cartões</CardTitle>
                     <CardDescription>Gerencie seus cartões para uso no chat.</CardDescription>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                    setIsDialogOpen(open);
+                    if (!open) resetForm();
+                }}>
                     <DialogTrigger asChild>
                         <Button size="sm" className="gap-2">
                             <Plus className="w-4 h-4" /> Adicionar
