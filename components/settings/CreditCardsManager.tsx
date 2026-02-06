@@ -219,7 +219,7 @@ export function CreditCardsManager() {
 
                                     <div className={`relative flex items-center justify-between z-10 ${bankStyle.text}`}>
                                         {/* Left: Chip & Info */}
-                                        <div className="flex flex-col gap-4">
+                                        <div className="flex flex-col gap-3">
                                             {/* Chip Icon */}
                                             <div className="w-10 h-7 rounded bg-gradient-to-tr from-yellow-200 to-yellow-400 opacity-80 shadow-sm border border-yellow-500/30 relative overflow-hidden">
                                                 <div className="absolute top-1/2 left-0 w-full h-[1px] bg-yellow-600/30" />
@@ -236,22 +236,22 @@ export function CreditCardsManager() {
                                         </div>
 
                                         {/* Right: Actions & Logo */}
-                                        <div className="flex flex-col justify-between items-end h-full gap-4">
-                                            <div className="bg-white/90 p-1.5 rounded-lg shadow-sm">
+                                        <div className="flex flex-col justify-between items-end h-full gap-2">
+                                            <div className="bg-white/90 p-1 rounded-md shadow-sm">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={bankStyle.logo}
                                                     alt={bankStyle.name}
-                                                    className="w-6 h-6 object-contain"
+                                                    className="w-5 h-5 object-contain"
                                                 />
                                             </div>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="text-white/50 hover:text-white hover:bg-white/10"
+                                                className="h-7 w-7 text-white/50 hover:text-white hover:bg-white/10"
                                                 onClick={() => handleDeleteCard(card.id)}
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
                                     </div>
