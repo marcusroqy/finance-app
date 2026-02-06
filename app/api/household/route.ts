@@ -78,10 +78,24 @@ export async function GET() {
             .in("id", userIds);
 
         if (profiles) {
-            enrichedMembers = members.map(m => ({
-                ...m,
-                profiles: profiles.find(p => p.id === m.user_id) || null
-            }));
+            enrichedMembers = members.map(m => {
+                let profile = profiles.find(p => p.id === m.user_id) || null;
+
+                // Fallback: If profile is missing but it's the current user, use auth data
+                if (!profile && m.user_id === user.id) {
+                    profile = {
+                        id: user.id,
+                        full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+                        email: user.email,
+                        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture
+                    };
+                }
+
+                return {
+                    ...m,
+                    profiles: profile
+                };
+            });
         }
     }
 
