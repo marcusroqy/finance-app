@@ -374,9 +374,9 @@ export function ChatContainer() {
 
     return (
         <div className="flex flex-col h-[100dvh] md:h-full bg-zinc-50/50 dark:bg-zinc-950/50 relative overflow-hidden fixed inset-0 md:static md:inset-auto z-10">
-            <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 scroll-smooth pb-28 pt-2">
+            <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 scroll-smooth pb-24 md:pb-32 pt-2">
                 {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center p-3 md:p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
+                    <div className="min-h-full flex flex-col items-center justify-start pt-8 md:justify-center md:pt-0 p-3 md:p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
                         <div className="w-14 h-14 md:w-16 md:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/5 shrink-0">
                             <span className="text-2xl md:text-3xl">✨</span>
                         </div>
@@ -389,7 +389,7 @@ export function ChatContainer() {
                             {t.chat.description}
                         </p>
 
-                        <div className="w-full max-w-2xl grid gap-3 md:gap-6 grid-cols-1 md:grid-cols-2 pb-4 overflow-y-auto max-h-[50vh] md:max-h-none">
+                        <div className="w-full max-w-2xl grid gap-3 md:gap-6 grid-cols-1 md:grid-cols-2 pb-8">
                             {/* Expense Examples */}
                             <div className="space-y-3">
                                 <h3 className="text-xs font-semibold text-rose-500 uppercase tracking-wider text-center md:text-left pl-1">
