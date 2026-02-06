@@ -373,10 +373,10 @@ export function ChatContainer() {
 
 
     return (
-        <div className="flex flex-col h-[100dvh] md:h-full bg-zinc-50/50 dark:bg-zinc-950/50 relative overflow-hidden fixed inset-0 md:static md:inset-auto z-10">
+        <div className="flex flex-col h-[100dvh] md:h-full bg-background relative overflow-hidden fixed inset-0 md:static md:inset-auto z-10">
             <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 scroll-smooth pb-24 md:pb-32 pt-2">
                 {messages.length === 0 ? (
-                    <div className="min-h-full flex flex-col items-center justify-start pt-8 md:justify-center md:pt-0 p-3 md:p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
+                    <div className="min-h-full flex flex-col items-center justify-start pt-8 p-3 md:p-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
                         <div className="w-14 h-14 md:w-16 md:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/5 shrink-0">
                             <span className="text-2xl md:text-3xl">✨</span>
                         </div>
