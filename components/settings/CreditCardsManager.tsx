@@ -198,10 +198,21 @@ export function CreditCardsManager() {
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2">
                         {cards.map((card) => {
-                            const bankStyle = BANKS[card.brand] || BANKS['mastercard']; // Fallback
+                            // Genius Style Inference 🧠
+                            let bankKey = card.brand;
+                            if (['mastercard', 'visa', 'elo', 'amex', 'other'].includes(card.brand)) {
+                                const lowerName = card.name.toLowerCase();
+                                for (const key of Object.keys(BANKS)) {
+                                    if (lowerName.includes(key)) {
+                                        bankKey = key;
+                                        break;
+                                    }
+                                }
+                            }
+                            const bankStyle = BANKS[bankKey] || BANKS[card.brand] || BANKS['mastercard'];
 
                             return (
-                                <div key={card.id} className={`relative overflow-hidden p-5 rounded-2xl border-0 shadow-lg group transition-all hover:scale-[1.02] bg-gradient-to-br ${bankStyle.gradient}`}>
+                                <div key={card.id} className={`relative overflow-hidden p-4 rounded-xl border-0 shadow-md group transition-all hover:scale-[1.01] bg-gradient-to-br ${bankStyle.gradient}`}>
                                     {/* Background Pattern/Overlay */}
                                     <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
                                     <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-black/10 rounded-full blur-2xl" />
@@ -217,8 +228,8 @@ export function CreditCardsManager() {
                                             </div>
 
                                             <div>
-                                                <p className="font-semibold text-lg tracking-wide">{card.name}</p>
-                                                <p className="font-mono text-sm opacity-80 tracking-widest gap-1 flex">
+                                                <p className="font-medium text-base tracking-wide truncate max-w-[140px]">{card.name}</p>
+                                                <p className="font-mono text-xs opacity-80 tracking-widest gap-1 flex">
                                                     <span>••••</span> <span>••••</span> <span>••••</span> <span>{card.last_4_digits}</span>
                                                 </p>
                                             </div>
