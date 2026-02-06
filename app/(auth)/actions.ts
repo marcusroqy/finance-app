@@ -57,12 +57,19 @@ export async function signout() {
 
 export async function signInWithGoogle() {
     const supabase = await createClient()
-    const origin = (await headers()).get('origin')
+
+    // Robust URL detection for Redirect
+    let redirectUrl = (await headers()).get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+    // Ensure Vercel URL is HTTPS
+    if (process.env.NEXT_PUBLIC_VERCEL_URL && !redirectUrl.includes('localhost')) {
+        redirectUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+    }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: `${origin}/auth/callback`,
+            redirectTo: `${redirectUrl}/auth/callback`,
         },
     })
 

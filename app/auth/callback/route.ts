@@ -13,8 +13,11 @@ export async function GET(request: Request) {
         if (!error) {
             return NextResponse.redirect(`${origin}${next}`)
         }
+
+        // Return to login if something went wrong during exchange
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
     }
 
-    // Return to login if something went wrong
-    return NextResponse.redirect(`${origin}/login?error=Falha na autenticação`)
+    // Return to login if no code
+    return NextResponse.redirect(`${origin}/login?error=Código+de+autenticação+ausente`)
 }
