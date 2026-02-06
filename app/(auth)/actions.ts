@@ -59,11 +59,16 @@ export async function signInWithGoogle() {
     const supabase = await createClient()
 
     // Robust URL detection for Redirect
-    let redirectUrl = (await headers()).get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    let redirectUrl = (await headers()).get('origin') ?? '';
 
-    // Ensure Vercel URL is HTTPS
-    if (process.env.NEXT_PUBLIC_VERCEL_URL && !redirectUrl.includes('localhost')) {
-        redirectUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+    if (!redirectUrl) {
+        if (process.env.NEXT_PUBLIC_SITE_URL) {
+            redirectUrl = process.env.NEXT_PUBLIC_SITE_URL;
+        } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+            redirectUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+        } else {
+            redirectUrl = 'http://localhost:3000';
+        }
     }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
