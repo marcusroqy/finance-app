@@ -5,22 +5,20 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, LayoutDashboard, Settings, LogOut } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { LanguageSelector } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { signout } from "@/app/(auth)/actions"
+
 
 export function AppSidebar() {
     const pathname = usePathname()
-    const router = useRouter()
+    // const router = useRouter() // Unused now
     const { t } = useLanguage()
 
-    const supabase = createClient()
-    const handleSignOut = async () => {
-        await supabase.auth.signOut()
-        router.push("/login")
-    }
+    // Server action used instead of client SDK
+    // const supabase = createClient()
+    // const handleSignOut = ...
 
     const routes = [
         {
@@ -68,19 +66,22 @@ export function AppSidebar() {
                 </div>
             </div>
 
+
             <div className="px-3">
                 <div className="mb-2 px-2 space-y-1">
                     <LanguageSelector />
                     <ThemeToggle />
                 </div>
-                <Button
-                    variant="ghost"
-                    className="w-full justify-start text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground h-9 rounded-sm px-2"
-                    onClick={handleSignOut}
-                >
-                    <LogOut className="h-4 w-4 mr-3 opacity-70" />
-                    <span className="font-medium">{t.sidebar.signOut}</span>
-                </Button>
+                <form action={signout}>
+                    <Button
+                        variant="ghost"
+                        type="submit"
+                        className="w-full justify-start text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground h-9 rounded-sm px-2"
+                    >
+                        <LogOut className="h-4 w-4 mr-3 opacity-70" />
+                        <span className="font-medium">{t.sidebar.signOut}</span>
+                    </Button>
+                </form>
             </div>
         </div>
     )
