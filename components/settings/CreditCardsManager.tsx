@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, CreditCard, Trash2, Loader2, CheckCircle2 } from "lucide-react"
+import { Plus, CreditCard as CreditCardIcon, Trash2, Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { BANKS } from "@/lib/parser"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -210,7 +210,7 @@ export function CreditCardsManager() {
                     </div>
                 ) : cards.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <CreditCardIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p>Nenhum cartão cadastrado.</p>
                     </div>
                 ) : (
