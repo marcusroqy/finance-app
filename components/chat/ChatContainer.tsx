@@ -338,7 +338,7 @@ export function ChatContainer() {
             amount: parsed.amount,
             category: parsed.category,
             description: finalDescription,
-            date: new Date(parsed.date).toISOString(),
+            date: !parsed.date || isNaN(new Date(parsed.date).getTime()) ? new Date().toISOString() : new Date(parsed.date).toISOString(),
             brand: parsed.brand,
             brandLogo: parsed.brandLogo,
             installments: parsed.installments,
