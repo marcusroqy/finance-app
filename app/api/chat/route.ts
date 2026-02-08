@@ -124,12 +124,12 @@ export async function POST(req: Request) {
 
         INSTRUCTIONS:
         1. MERGE: Combine User Input with Previous Context. New input overrides old fields only if explicit.
-        2. VALIDATE: Check if we have minimal required fields for a NEW transaction:
-           - Amount (number)
-           - Description (string)
-           - Payment Method (for expenses).
-           - Due Date (for bills/future).
-        3. INTERROGATE: If fields are missing, set status="needs_details" and ask specifically for them in 'response_message'.
+        2. VALIDATE (CRITICAL):
+           - NEVER return status="success" if "amount" is null.
+           - If "amount" is missing, set status="needs_details" and ask for it.
+           - For BILL PAYMENTS ("pay_bill" action), usage of 'response_message' to ask for confirmation is MANDATORY.
+
+        3. INTERROGATE: If fields are missing, set status="needs_details" and ask specifically for them.
 
         INPUT ANALYSIS:
         - Analyze text or image.
@@ -161,14 +161,14 @@ export async function POST(req: Request) {
             - IMPORTANT: If user specifies a day (e.g. "todo dia 15"), set 'recurringDay' to 15 AND set 'date' to the NEXT occurrence of that day.
 
         PENDING BILL MATCHING LOGIC (Priority High):
-        - If user says "Paguei [Bill Name]" or upload receipt for [Bill Name]:
+        - If user says "Paguei [Bill Name]" or "Conta paga":
           - Fuzzy match with PENDING BILLS list.
           - If match found (e.g. User: "Paguei aluguel", Pending: "Aluguel (R$ 1200)"):
             - Set "action": "pay_bill".
             - Set "transactionId": [The UUID of the pending bill].
             - Set "amount": [User input amount OR Bill amount].
             - Ask for confirmation in 'response_message': "Encontrei a conta 'Aluguel' de R$ 1.200. Confirmar pagamento?"
-            - If amounts differ significantly, warn in 'response_message'.
+
 
         💳 CREDIT CARD BILL PAYMENT SCRIPT (Strictly for "Pagar Fatura" / "Pay Bill"):
         1. IDENTIFY CARD:
@@ -186,14 +186,14 @@ export async function POST(req: Request) {
            - Output 'newCard' object: { "name": "BrasilCard", "last_4_digits": "1234", "brand": "elo" }.
            - Set cardId="NEW".
 
-        4. IDENTIFY AMOUNT:
+        4. IDENTIFY AMOUNT (CRITICAL):
            - Did user specify amount?
-           - **SMART TOTAL LOGIC**: If user says "total", "tudo", "full", "completo" AND you identified a specific card (e.g. BrasilCard):
-             - LOOK at [ESTIMATED CARD BALANCES].
-             - Use the balance for that card as the `amount`.
-             - Example: User "Pagar fatura BrasilCard total". Balance says "BrasilCard: R$ 340". Output amount: 340.
-             - Example: User "Total". Context has cardId for Nu. Balance says "Nu: R$ 500". Output amount: 500.
-           - If NO amount and NO "total" keyword: Ask "Qual foi o valor pago?". Set status="needs_details".
+           - **SMART TOTAL LOGIC**: If user says "total", "tudo", "full" AND you identified a card:
+             - Use [ESTIMATED CARD BALANCES] value.
+           - If NO amount found:
+             - Set status="needs_details".
+             - Ask "Qual foi o valor pago?".
+             - NEVER assume a value unless explicitly stated or "total" is used.
 
         5. IDENTIFY SOURCE:
            - How did they pay? (Pix, Bank Balance, etc).
