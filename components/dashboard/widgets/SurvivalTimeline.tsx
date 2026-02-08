@@ -23,7 +23,10 @@ export function SurvivalTimeline({ transactions, currentBalance }: SurvivalTimel
             return t.type === 'expense' && tDate >= thirtyDaysAgo
         })
 
-        const totalSpent = recentExpenses.reduce((sum, t) => sum + Number(t.amount), 0)
+        const totalSpent = recentExpenses.reduce((sum, t) => {
+            const val = Number(t.amount)
+            return sum + (isNaN(val) ? 0 : val)
+        }, 0)
 
         // Prevent division by zero if no expenses
         if (totalSpent === 0) return 0

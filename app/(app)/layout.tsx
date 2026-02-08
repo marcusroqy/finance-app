@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export default function AppLayout({
     children,

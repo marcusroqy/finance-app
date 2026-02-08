@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -15,10 +17,6 @@ export function AppSidebar() {
     const pathname = usePathname()
     // const router = useRouter() // Unused now
     const { t } = useLanguage()
-
-    // Server action used instead of client SDK
-    // const supabase = createClient()
-    // const handleSignOut = ...
 
     const routes = [
         {
@@ -37,6 +35,8 @@ export function AppSidebar() {
             href: "/settings",
         },
     ]
+
+
 
     return (
         <div className="space-y-4 py-4 flex flex-col h-full bg-sidebar border-r border-sidebar-border text-sidebar-foreground">

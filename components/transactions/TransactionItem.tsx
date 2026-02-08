@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { format } from "date-fns"
+import { formatCurrency } from "@/lib/utils"
 import { MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, Utensils, Car, Zap, ShoppingBag, Film, Heart, Briefcase, CreditCard } from "lucide-react"
 import { Transaction } from "@/lib/types"
 import { BRANDS } from "@/lib/parser"
@@ -149,7 +150,7 @@ export function TransactionItem({ transaction, onDelete, onEdit }: TransactionIt
 
             <div className="flex items-center gap-4">
                 <span className={`font-semibold ${colorClass}`}>
-                    {isIncome ? "+" : "-"}${Number(transaction.amount).toFixed(2)}
+                    {isIncome ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
                 </span>
 
                 <DropdownMenu>

@@ -15,6 +15,15 @@ export interface ParsedTransaction {
     brand?: string;
     brandLogo?: string;
     cardId?: string;
+    isRecurring?: boolean;
+    recurringDay?: number;
+    newCard?: {
+        name: string;
+        last_4_digits: string;
+        brand: string;
+    };
+    action?: 'create' | 'pay_bill' | 'update';
+    transactionId?: string;
 }
 
 const CATEGORIES: Record<string, string[]> = {

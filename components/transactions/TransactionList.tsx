@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { format } from "date-fns"
+import { formatCurrency } from "@/lib/utils"
 import { ptBR } from "date-fns/locale"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -14,15 +15,18 @@ import { useLanguage } from "@/lib/i18n/language-context"
 interface TransactionListProps {
     transactions: Transaction[]
     isLoading: boolean
-    onUpdate: () => void // Callback to refresh parent state
+    onUpdate: () => void
+    currentMonth: Date
+    onMonthChange: (date: Date) => void
+    availableMonths: string[]
 }
 
-export function TransactionList({ transactions, isLoading, onUpdate }: TransactionListProps) {
+export function TransactionList({ transactions, isLoading, onUpdate, currentMonth, onMonthChange, availableMonths }: TransactionListProps) {
     const { t, locale } = useLanguage()
     const router = useRouter()
+    const [isMounted, setIsMounted] = React.useState(false)
 
-    // State for selected month (defaults to current month)
-    const [selectedMonth, setSelectedMonth] = React.useState(() => new Date())
+    React.useEffect(() => { setIsMounted(true) }, [])
 
     const handleDelete = async (id: string) => {
         try {
@@ -38,36 +42,15 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
     const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
 
-    // Get available months from transactions
-    const availableMonths = React.useMemo(() => {
-        const months = new Set<string>()
-        transactions.forEach(t => {
-            const date = new Date(t.date)
-            months.add(format(date, "yyyy-MM"))
-        })
-        return Array.from(months).sort((a, b) => b.localeCompare(a))
-    }, [transactions])
-
-    // Auto-select the most recent month with transactions
-    React.useEffect(() => {
-        if (availableMonths.length > 0) {
-            const currentMonthKey = format(selectedMonth, "yyyy-MM")
-            if (!availableMonths.includes(currentMonthKey)) {
-                // Select the most recent month with transactions
-                const [year, month] = availableMonths[0].split("-")
-                setSelectedMonth(new Date(parseInt(year), parseInt(month) - 1, 1))
-            }
-        }
-    }, [availableMonths])
-
     // Filter transactions for selected month
     const filteredTransactions = React.useMemo(() => {
-        const selectedKey = format(selectedMonth, "yyyy-MM")
+        const selectedKey = format(currentMonth, "yyyy-MM")
         return transactions.filter(t => {
             const date = new Date(t.date)
+            if (isNaN(date.getTime())) return false
             return format(date, "yyyy-MM") === selectedKey
         })
-    }, [transactions, selectedMonth])
+    }, [transactions, currentMonth])
 
     // Calculate monthly totals
     const monthlyTotals = React.useMemo(() => {
@@ -89,6 +72,8 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
         return <div>{t.dashboard.loading}</div>
     }
 
+    if (!isMounted) return null
+
     if (transactions.length === 0) {
         return (
             <div className="text-center p-8 text-muted-foreground border-2 border-dashed rounded-xl">
@@ -102,8 +87,8 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
             {/* Month Navigator */}
             <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
                 <MonthNavigator
-                    currentMonth={selectedMonth}
-                    onMonthChange={setSelectedMonth}
+                    currentMonth={currentMonth}
+                    onMonthChange={onMonthChange}
                     availableMonths={availableMonths}
                 />
 
@@ -114,7 +99,7 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
                             {locale === 'pt' ? 'Receitas' : 'Income'}
                         </span>
                         <p className="font-semibold text-green-500">
-                            +{locale === 'pt' ? 'R$' : '$'}{monthlyTotals.income.toFixed(2)}
+                            +{formatCurrency(monthlyTotals.income)}
                         </p>
                     </div>
                     <div className="text-center">
@@ -122,7 +107,7 @@ export function TransactionList({ transactions, isLoading, onUpdate }: Transacti
                             {locale === 'pt' ? 'Despesas' : 'Expenses'}
                         </span>
                         <p className="font-semibold text-red-500">
-                            -{locale === 'pt' ? 'R$' : '$'}{monthlyTotals.expenses.toFixed(2)}
+                            -{formatCurrency(monthlyTotals.expenses)}
                         </p>
                     </div>
                 </div>

@@ -1,36 +1,39 @@
 "use client"
 
-import { TransactionList } from "@/components/transactions/TransactionList"
-import { useLanguage } from "@/lib/i18n/language-context"
-
 import * as React from "react"
-import { DashboardSummary } from "@/components/dashboard/DashboardSummary"
-import { FinancialChart } from "@/components/dashboard/FinancialChart"
-import { CategoryChart } from "@/components/dashboard/CategoryChart"
-import { InstallmentWidget } from "@/components/dashboard/InstallmentWidget"
+import { useLanguage } from "@/lib/i18n/language-context"
+import { format } from "date-fns"
+import dynamic from "next/dynamic"
+import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { Transaction } from "@/lib/types"
-import { CreditCardsWidget } from "@/components/dashboard/CreditCardsWidget"
 
-import { SurvivalTimeline } from "@/components/dashboard/widgets/SurvivalTimeline"
-import { ImpulseSimulator } from "@/components/dashboard/widgets/ImpulseSimulator"
-import { FinancialWeather } from "@/components/dashboard/widgets/FinancialWeather"
+// Dynamic imports to prevent SSR hydration mismatches (Standard v2.12 behavior)
+const TransactionList = dynamic(() => import("@/components/transactions/TransactionList").then(mod => mod.TransactionList), { ssr: false })
+const DashboardSummary = dynamic(() => import("@/components/dashboard/DashboardSummary").then(mod => mod.DashboardSummary), { ssr: false })
+const FinancialChart = dynamic(() => import("@/components/dashboard/FinancialChart").then(mod => mod.FinancialChart), { ssr: false })
+const CategoryChart = dynamic(() => import("@/components/dashboard/CategoryChart").then(mod => mod.CategoryChart), { ssr: false })
+const CreditCardsWidget = dynamic(() => import("@/components/dashboard/CreditCardsWidget").then(mod => mod.CreditCardsWidget), { ssr: false })
+const InstallmentWidget = dynamic(() => import("@/components/dashboard/InstallmentWidget").then(mod => mod.InstallmentWidget), { ssr: false })
+const SurvivalTimeline = dynamic(() => import("@/components/dashboard/widgets/SurvivalTimeline").then(mod => mod.SurvivalTimeline), { ssr: false })
+const ImpulseSimulator = dynamic(() => import("@/components/dashboard/widgets/ImpulseSimulator").then(mod => mod.ImpulseSimulator), { ssr: false })
+const FinancialWeather = dynamic(() => import("@/components/dashboard/widgets/FinancialWeather").then(mod => mod.FinancialWeather), { ssr: false })
 
 export default function DashboardPage() {
     const { t } = useLanguage()
     const [transactions, setTransactions] = React.useState<Transaction[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
+    const [selectedMonth, setSelectedMonth] = React.useState(() => new Date())
 
     const fetchTransactions = async () => {
-        // ... functionality remains same ...
         setIsLoading(true)
         try {
             const res = await fetch("/api/transactions")
             if (res.ok) {
                 const data = await res.json()
-                setTransactions(data)
+                if (Array.isArray(data)) setTransactions(data)
             }
         } catch (error) {
-            console.error("Failed to fetch transactions", error)
+            console.error(error)
         } finally {
             setIsLoading(false)
         }
@@ -40,13 +43,53 @@ export default function DashboardPage() {
         fetchTransactions()
     }, [])
 
-    const income = transactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Number(t.amount), 0)
+    // Get available months from transactions
+    const availableMonths = React.useMemo(() => {
+        const months = new Set<string>()
+        transactions.forEach(t => {
+            const date = new Date(t.date)
+            if (!isNaN(date.getTime())) {
+                months.add(format(date, "yyyy-MM"))
+            }
+        })
+        return Array.from(months).sort((a, b) => b.localeCompare(a))
+    }, [transactions])
 
-    const expenses = transactions
+    // Auto-select the most recent month with transactions
+    React.useEffect(() => {
+        if (availableMonths.length > 0) {
+            const currentMonthKey = format(selectedMonth, "yyyy-MM")
+            if (!availableMonths.includes(currentMonthKey)) {
+                // Select the most recent month with transactions
+                const [year, month] = availableMonths[0].split("-")
+                setSelectedMonth(new Date(parseInt(year), parseInt(month) - 1, 1))
+            }
+        }
+    }, [availableMonths])
+
+    // Filter transactions for selected month
+    const filteredTransactions = React.useMemo(() => {
+        const selectedKey = format(selectedMonth, "yyyy-MM")
+        return transactions.filter(t => {
+            const date = new Date(t.date)
+            if (isNaN(date.getTime())) return false
+            return format(date, "yyyy-MM") === selectedKey
+        })
+    }, [transactions, selectedMonth])
+
+    const income = filteredTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => {
+            const val = Number(t.amount);
+            return sum + (isNaN(val) ? 0 : val);
+        }, 0)
+
+    const expenses = filteredTransactions
         .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Number(t.amount), 0)
+        .reduce((sum, t) => {
+            const val = Number(t.amount);
+            return sum + (isNaN(val) ? 0 : val);
+        }, 0)
 
     const total = income - expenses
 
@@ -65,11 +108,11 @@ export default function DashboardPage() {
             <DashboardSummary income={income} expenses={expenses} total={total} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-                {/* Main Column (Charts & Transactions) */}
                 <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
                     <CreditCardsWidget transactions={transactions} onUpdate={fetchTransactions} />
-                    <FinancialChart transactions={transactions} />
+                    <ErrorBoundary>
+                        <FinancialChart transactions={filteredTransactions} />
+                    </ErrorBoundary>
 
                     <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
                         <div className="p-6">
@@ -78,17 +121,19 @@ export default function DashboardPage() {
                                 transactions={transactions}
                                 isLoading={isLoading}
                                 onUpdate={fetchTransactions}
+                                currentMonth={selectedMonth}
+                                onMonthChange={setSelectedMonth}
+                                availableMonths={availableMonths}
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar Column (Widgets) */}
                 <div className="space-y-6 lg:sticky lg:top-6 order-1 lg:order-2">
-                    <SurvivalTimeline transactions={transactions} currentBalance={total} />
-                    <ImpulseSimulator transactions={transactions} currentBalance={total} />
-                    <InstallmentWidget transactions={transactions} />
-                    <CategoryChart transactions={transactions} />
+                    <SurvivalTimeline transactions={filteredTransactions} currentBalance={total} />
+                    <ImpulseSimulator transactions={filteredTransactions} currentBalance={total} />
+                    <InstallmentWidget transactions={filteredTransactions} />
+                    <CategoryChart transactions={filteredTransactions} />
                 </div>
             </div>
         </div>

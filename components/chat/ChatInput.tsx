@@ -68,7 +68,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                 </div>
             )}
 
-            <div className="relative flex items-end transition-all duration-300 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm focus-within:shadow-md focus-within:border-primary/20">
+            <div className="relative flex items-end transition-all duration-300 bg-transparent backdrop-blur-sm rounded-2xl border border-zinc-600/50 shadow-sm focus-within:shadow-md focus-within:border-zinc-500">
 
                 {/* Hidden File Input */}
                 <input
@@ -97,7 +97,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                     placeholder={selectedImage ? "Fale sobre essa imagem..." : t.chat.inputPlaceholder}
                     disabled={disabled}
                     rows={1}
-                    className="w-full p-3.5 bg-transparent border-none outline-none resize-none max-h-32 text-base placeholder:text-zinc-400 dark:placeholder:text-zinc-600 min-h-[52px] leading-relaxed"
+                    className="w-full p-3.5 bg-transparent border-none outline-none resize-none max-h-32 text-base text-zinc-100 placeholder:text-zinc-400 min-h-[52px] leading-relaxed"
                 />
 
                 <button

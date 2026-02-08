@@ -1,6 +1,7 @@
 "use client"
 
 import { useLanguage } from "@/lib/i18n/language-context"
+import { formatCurrency } from "@/lib/utils"
 import { Transaction } from "@/lib/types"
 import { format, subDays } from "date-fns"
 import { ptBR, enUS } from "date-fns/locale"
@@ -12,7 +13,6 @@ interface FinancialChartProps {
 
 export function FinancialChart({ transactions }: FinancialChartProps) {
     const { t, locale } = useLanguage()
-
     // Process data: Group by last 7 days
     const data = React.useMemo(() => {
         const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -33,11 +33,12 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
                 d.date.getFullYear() === tDate.getFullYear()
             )
 
-            if (dayData) {
+            if (dayData && !isNaN(Number(transaction.amount))) {
+                const amount = Number(transaction.amount);
                 if (transaction.type === 'income') {
-                    dayData.income += Number(transaction.amount)
+                    dayData.income += amount
                 } else {
-                    dayData.expense += Number(transaction.amount)
+                    dayData.expense += amount
                 }
             }
         })
@@ -50,8 +51,8 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
     return (
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 className="tracking-tight text-sm font-medium text-muted-foreground mb-6">{t.dashboard.chartTitle}</h3>
-            <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[300px] w-full min-w-0 overflow-hidden">
+                <ResponsiveContainer width="99%" height="100%">
                     <BarChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
                         <XAxis
@@ -66,7 +67,7 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
                             fontSize={12}
                             tickLine={false}
                             axisLine={false}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => formatCurrency(value)}
                         />
                         <Tooltip
                             contentStyle={{
@@ -81,6 +82,7 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
                                 color: 'var(--card-foreground)'
                             }}
                             cursor={{ fill: 'var(--muted)', opacity: 0.2 }}
+                            formatter={(value: number | undefined) => [value !== undefined ? formatCurrency(value) : '']}
                         />
                         <Bar
                             dataKey="income"

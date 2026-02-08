@@ -22,16 +22,25 @@ const COLORS = {
 
 export function CategoryChart({ transactions }: CategoryChartProps) {
     const { t } = useLanguage()
+    const [isMounted, setIsMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const data = React.useMemo(() => {
+        if (!isMounted) return []
         const categories: Record<string, number> = {}
         let total = 0;
 
         transactions.forEach(t => {
             if (t.type === 'expense') { // Only expenses for category breakdown usually
-                if (!categories[t.category]) categories[t.category] = 0
-                categories[t.category] += Number(t.amount)
-                total += Number(t.amount)
+                const amount = Number(t.amount)
+                if (!isNaN(amount) && amount > 0) {
+                    if (!categories[t.category]) categories[t.category] = 0
+                    categories[t.category] += amount
+                    total += amount
+                }
             }
         })
 
@@ -46,15 +55,19 @@ export function CategoryChart({ transactions }: CategoryChartProps) {
             }))
             .sort((a, b) => b.value - a.value)
             .filter(i => i.percentage > 1) // Hide tiny slices
-    }, [transactions, t])
+    }, [transactions, t, isMounted])
+
+    if (!isMounted) {
+        return <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 flex flex-col h-[300px] items-center justify-center text-muted-foreground">Carregando categorias...</div>
+    }
 
     if (data.length === 0) return null
 
     return (
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 flex flex-col">
             <h3 className="tracking-tight text-sm font-medium text-muted-foreground mb-4">Gastos por Categoria</h3>
-            <div className="h-[300px] w-full mt-auto">
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[300px] w-full mt-auto min-w-[1px]">
+                <ResponsiveContainer width="99%" height="100%">
                     <PieChart>
                         <Pie
                             data={data}

@@ -45,7 +45,10 @@ export function ImpulseSimulator({ transactions, currentBalance }: ImpulseSimula
             const tDate = new Date(t.date)
             return t.type === 'expense' && tDate >= thirtyDaysAgo
         })
-        const totalSpent = recentExpenses.reduce((sum, t) => sum + Number(t.amount), 0)
+        const totalSpent = recentExpenses.reduce((sum, t) => {
+            const val = Number(t.amount)
+            return sum + (isNaN(val) ? 0 : val)
+        }, 0)
         const dailyBurnRate = totalSpent > 0 ? totalSpent / 30 : 0
 
         // Income
@@ -53,7 +56,10 @@ export function ImpulseSimulator({ transactions, currentBalance }: ImpulseSimula
             const tDate = new Date(t.date)
             return t.type === 'income' && tDate >= thirtyDaysAgo
         })
-        const totalIncome = recentIncome.reduce((sum, t) => sum + Number(t.amount), 0)
+        const totalIncome = recentIncome.reduce((sum, t) => {
+            const val = Number(t.amount)
+            return sum + (isNaN(val) ? 0 : val)
+        }, 0)
         const dailyIncome = totalIncome > 0 ? totalIncome / 30 : 0 // Income per calendar day
 
         // Work days (assuming 22 work days/mo standard for simpler mental model, or 30 for daily avg)

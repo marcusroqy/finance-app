@@ -8,11 +8,13 @@ interface ExtendedDTO extends CreateTransactionDTO {
     brandLogo?: string;
     installments?: number;
     cardId?: string;
+    isRecurring?: boolean;
+    recurringDay?: number;
 }
 
 export async function POST(request: Request) {
     try {
-        const supabase = await createClient() // awaiting the server client
+        const supabase = await createClient()
 
         const {
             data: { user },
@@ -23,6 +25,10 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json() as ExtendedDTO
+
+        // Determine status based on date (Future = Pending)
+        const isFuture = new Date(body.date) > new Date();
+        const status = isFuture ? 'pending' : 'paid';
 
         // Basic validation could go here, or use Zod
 
@@ -37,17 +43,21 @@ export async function POST(request: Request) {
                 const newDate = new Date(baseDate);
                 newDate.setMonth(baseDate.getMonth() + i);
 
+                // Future installments are always pending if distinct from today
+                const installmentStatus = newDate > new Date() ? 'pending' : 'paid';
+
                 transactions.push({
                     user_id: user.id,
                     type: body.type,
-                    amount: body.amount, // Accessing parsed amount (which is already divided by installments)
+                    amount: body.amount,
                     category: body.category,
                     description: `${baseDescription} (${i + 1}/${body.installments})`,
                     date: newDate.toISOString(),
                     brand: body.brand,
                     brand_logo_url: body.brandLogo,
                     card_id: body.cardId,
-                    created_at: new Date().toISOString(), // Supabase might handle this but good to be explicit for bulk
+                    created_at: new Date().toISOString(),
+                    status: installmentStatus
                 });
             }
 
@@ -74,6 +84,9 @@ export async function POST(request: Request) {
                     brand: body.brand,
                     brand_logo_url: body.brandLogo,
                     card_id: body.cardId,
+                    is_recurring: body.isRecurring,
+                    recurring_day: body.recurringDay,
+                    status: status
                 })
                 .select()
                 .single()
@@ -130,5 +143,34 @@ export async function GET(request: Request) {
         return t;
     });
 
-    return NextResponse.json(enrichedData)
+    // Project Recurring Transactions
+    const projectedTransactions: any[] = [];
+    const today = new Date();
+
+    enrichedData.forEach(t => {
+        if (t.is_recurring && t.recurring_day) {
+            // Project for the next 12 months
+            for (let i = 1; i <= 12; i++) {
+                const futureDate = new Date(today.getFullYear(), today.getMonth() + i, t.recurring_day);
+
+                // Create a virtual transaction ID to avoid key conflicts, but keep reference
+                const virtualId = `virtual-${t.id}-${i}`;
+
+                projectedTransactions.push({
+                    ...t,
+                    id: virtualId,
+                    date: futureDate.toISOString(),
+                    status: 'pending', // Future recurring are always pending
+                    is_projected: true // Flag to UI if needed
+                });
+            }
+        }
+    });
+
+    // Merge real and projected
+    const finalData = [...enrichedData, ...projectedTransactions].sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    return NextResponse.json(finalData)
 }

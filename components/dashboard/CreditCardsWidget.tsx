@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { format } from "date-fns"
 import { CreditCard, Transaction } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BANKS } from "@/lib/parser"
@@ -48,6 +49,9 @@ export function CreditCardsWidget({ transactions, onUpdate }: CreditCardsWidgetP
         fetchCards()
     }, [])
 
+    // State for the modal's internal month navigation
+    const [modalMonth, setModalMonth] = React.useState(() => new Date());
+
     // Filter expenses for current month for the preview
     const currentMonth = new Date().getMonth()
     const currentYear = new Date().getFullYear()
@@ -56,6 +60,7 @@ export function CreditCardsWidget({ transactions, onUpdate }: CreditCardsWidgetP
         return transactions
             .filter(t => {
                 const tDate = new Date(t.date)
+                if (isNaN(tDate.getTime())) return false
                 return t.type === 'expense' &&
                     (t as any).card_id === cardId &&
                     tDate.getMonth() === currentMonth &&
@@ -63,6 +68,30 @@ export function CreditCardsWidget({ transactions, onUpdate }: CreditCardsWidgetP
             })
             .reduce((sum, t) => sum + Number(t.amount), 0)
     }
+
+    const selectedCardTransactions = selectedCard
+        ? transactions.filter(t => (t as any).card_id === selectedCard.id)
+        : [];
+
+    const availableMonthsForCard = React.useMemo(() => {
+        if (!selectedCardTransactions) return [];
+        const months = new Set<string>()
+        selectedCardTransactions.forEach(t => {
+            const date = new Date(t.date)
+            if (!isNaN(date.getTime())) {
+                months.add(format(date, "yyyy-MM"))
+            }
+        })
+        return Array.from(months).sort((a, b) => b.localeCompare(a))
+    }, [selectedCardTransactions])
+
+    // Auto-select latest month when opening card
+    React.useEffect(() => {
+        if (selectedCard && availableMonthsForCard.length > 0) {
+            const [year, month] = availableMonthsForCard[0].split("-")
+            setModalMonth(new Date(parseInt(year), parseInt(month) - 1, 1))
+        }
+    }, [selectedCard, availableMonthsForCard])
 
     if (isLoading) return <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
 
@@ -80,18 +109,9 @@ export function CreditCardsWidget({ transactions, onUpdate }: CreditCardsWidgetP
         return BANKS[bankKey] || BANKS[card.brand] || BANKS['mastercard'];
     }
 
-    const selectedCardTransactions = selectedCard
-        ? transactions.filter(t => (t as any).card_id === selectedCard.id)
-        : [];
-
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <CreditCardIcon className="w-5 h-5 text-primary" /> Meus Cartões
-                </h2>
-            </div>
-
+            {/* ... existing card rendering ... */}
             <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
                 {cards.map(card => {
                     const style = getBankStyle(card)
@@ -173,6 +193,9 @@ export function CreditCardsWidget({ transactions, onUpdate }: CreditCardsWidgetP
                             transactions={selectedCardTransactions}
                             isLoading={false}
                             onUpdate={onUpdate || (() => { })}
+                            currentMonth={modalMonth}
+                            onMonthChange={setModalMonth}
+                            availableMonths={availableMonthsForCard}
                         />
                     </div>
                 </DialogContent>

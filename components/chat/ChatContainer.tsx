@@ -87,6 +87,40 @@ export function ChatContainer() {
             draft.status = 'needs_details';
             draft.paymentMethod = 'unknown'; // Force ask
             setPendingTransaction(draft);
+        } else if (option.action === 'confirm-payment') {
+            const transactionId = option.value;
+            addUserMessage(option.label);
+
+            try {
+                // We use the amount from pendingTransaction if available (user might have said "paid 150" for a 200 bill)
+                const body: any = { status: 'paid' };
+                if (pendingTransaction && pendingTransaction.amount) {
+                    body.amount = pendingTransaction.amount;
+                }
+
+                const res = await fetch(`/api/transactions/${transactionId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (!res.ok) throw new Error("Failed to update");
+
+                setMessages(prev => [...prev, {
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content: "✅ Conta paga com sucesso! 🎉",
+                    createdAt: new Date()
+                }]);
+                setPendingTransaction(null);
+            } catch (error) {
+                setMessages(prev => [...prev, {
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content: "❌ Erro ao atualizar conta. Tente novamente.",
+                    createdAt: new Date()
+                }]);
+            }
         }
     }
 
@@ -108,118 +142,120 @@ export function ChatContainer() {
             id: Date.now().toString(),
             role: "user",
             content: content,
-            image: image, // Add image display support to ChatMessage component later if needed, or just allow it here
+            image: image,
             createdAt: new Date()
         }
         setMessages(prev => [...prev, userMessage])
         setIsSending(true)
 
         try {
-            // 1. Check if we are waiting for something (Pending State) - Only if NO image
-            // If image is present, usually it starts a new context or resolves a pending one?
-            // Let's assume Pending State is text-only interaction for now.
-            if (pendingTransaction && !image) {
-                await handlePendingState(content);
-                setIsSending(false);
-                return;
-            }
-
-            // 2. AI Processing (Vision or Text)
-            // Use API if image is present OR if we want smarter parsing for complex text
-            // Let's use API for everything now that we have it, it's smarter.
-            // But we keep local parser logic for specific follow-up flows if needed? 
-            // Actually, the API returns a structured JSON just like the parser!
-
+            // AI Processing with Context
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: content, image }),
+                body: JSON.stringify({
+                    message: content,
+                    image,
+                    context: pendingTransaction // SEND CONTEXT!
+                }),
             });
-
-            if (!response.ok) throw new Error("AI request failed");
 
             const parsed = await response.json();
 
-            // Handle Error from API
-            if (parsed.error) throw new Error(parsed.error);
-
-            // 3. Process the Result
-            if (parsed.status === 'missing_amount') {
-                // ... (Re-use existing logic for asking questions, but maybe refine based on API return?)
-                // The API can also return "needs_details" if we prompt it, but my prompt just returns simple JSON.
-                // Let's handle 'missing_amount' similar to before.
-
-                let question = `Entendi. Quanto custou?`;
-                if (parsed.brand) question = `Vi que é ${parsed.brand}. Quanto foi?`;
-
-                const aiResponse: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: "assistant",
-                    content: question,
-                    createdAt: new Date()
-                }
-                setMessages(prev => [...prev, aiResponse])
-                setPendingTransaction(parsed)
-                return;
-            }
-
-            // High Value / Installments Check (Shared Logic)
-            // Reuse logic from before but map API fields to ParsedTransaction
-            const needsPayment = (!parsed.paymentMethod || parsed.paymentMethod === 'unknown');
-            const isHighValue = parsed.amount > 100;
-            const hasInstallments = !!parsed.installments;
-
-            if (parsed.type === 'expense' && needsPayment && (isHighValue || hasInstallments)) {
-                // ... (Same logic: Ask for method)
-                let question = `Valor de R$${parsed.amount.toFixed(2)}. Como pagou?`;
-                if (hasInstallments) question = `Entendi que é em ${parsed.installments}x. Foi no Cartão de Crédito?`;
-
-                const aiResponse: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: "assistant",
-                    content: question,
-                    createdAt: new Date()
-                };
-                setMessages(prev => [...prev, aiResponse]);
-
-                parsed.status = 'needs_details'; // Ensure status is set
-                setPendingTransaction(parsed); // Cast to ParsedTransaction
-                return;
-            }
-
-            // Success immediately
-            await saveTransaction(parsed);
-
-        } catch (error) {
-            console.error("AI Error, falling back to local:", error)
-
-            // FALLBACK TO LOCAL REGEX IF API FAILS (and no image)
-            if (!image) {
-                const parsed = parseMessage(content);
-                if (parsed) {
-                    // ... (Copy of success logic or just call it)
-                    // Simplifying fallback: just try to save if amount is there
-                    if (parsed.status === 'success') {
-                        await saveTransaction(parsed);
-                    } else {
-                        // Interactive fallback not fully replicated here to save lines, 
-                        // but ideally we just show error message.
-                        const aiResponse: Message = {
-                            id: (Date.now() + 1).toString(),
-                            role: "assistant",
-                            content: "Tive um problema de conexão. Tente novamente ou digite simplificado (ex: 'Uber 20').",
-                            createdAt: new Date()
-                        }
-                        setMessages(prev => [...prev, aiResponse])
+            if (!response.ok) {
+                // If it's a safety/length error, show response_message
+                if (parsed.response_message) {
+                    const aiResponse: Message = {
+                        id: (Date.now() + 1).toString(),
+                        role: "assistant",
+                        content: parsed.response_message,
+                        createdAt: new Date()
                     }
+                    setMessages(prev => [...prev, aiResponse])
+                    setIsSending(false)
                     return;
                 }
+                throw new Error(parsed.error || "AI request failed");
             }
 
+            // Handle Error from API
+            if (parsed.error) {
+                // If it's a safety/length error, show response_message
+                if (parsed.response_message) {
+                    const aiResponse: Message = {
+                        id: (Date.now() + 1).toString(),
+                        role: "assistant",
+                        content: parsed.response_message,
+                        createdAt: new Date()
+                    }
+                    setMessages(prev => [...prev, aiResponse])
+                    setIsSending(false)
+                    return;
+                }
+                throw new Error(parsed.error);
+            }
+
+            // 1. Display AI Response (The Question or Confirmation)
+            // The AI now ALWAYS returns a response_message (defined in prompt)
+            if (parsed.response_message) {
+                const aiResponse: Message = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: parsed.response_message,
+                    createdAt: new Date()
+                }
+
+                // If Action is PAY_BILL, add confirmation options immediately
+                if (parsed.action === 'pay_bill' && parsed.transactionId) {
+                    aiResponse.options = [
+                        { label: "✅ Sim, Pagar", value: parsed.transactionId, action: "confirm-payment" },
+                        { label: "❌ Não, Cancelar", value: "cancel", action: "cancel" }
+                    ];
+                    // Clean pending state so we don't double process?
+                    // Actually we might need it for amount confirmation.
+                    setPendingTransaction(parsed);
+                }
+
+                setMessages(prev => [...prev, aiResponse])
+            }
+
+            // 2. Handle Status
+            if (parsed.status === 'success') {
+                // Check if we need to ask for Card (for Credit)
+                // The AI might have asked "How did you pay?", user said "Credit".
+                // Now we have method=credit but maybe no cardId.
+                if (parsed.paymentMethod === 'credit' && !parsed.cardId && cards.length > 0) {
+                    const aiResponse: Message = {
+                        id: (Date.now() + 2).toString(),
+                        role: "assistant",
+                        content: "Qual cartão você usou?",
+                        options: cards.map(c => ({
+                            label: `${c.name} • ${c.last4}`,
+                            value: c.id,
+                            action: 'select-card'
+                        })),
+                        createdAt: new Date()
+                    }
+                    setMessages(prev => [...prev, aiResponse])
+                    parsed.status = 'needs_details'; // Hold success to get card
+                    setPendingTransaction(parsed);
+                    return;
+                }
+
+                setPendingTransaction(null);
+                await saveTransaction(parsed);
+            } else {
+                // needs_details: The AI already asked the question in response_message.
+                // We just update the state.
+                setPendingTransaction(parsed);
+            }
+
+        } catch (error: any) {
+            console.error("AI Error:", error)
             const aiResponse: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: "Desculpe, não consegui processar isso agora.",
+                content: `❌ Erro de Conexão: ${error.message || "Tente novamente."}`,
                 createdAt: new Date()
             }
             setMessages(prev => [...prev, aiResponse])
@@ -228,169 +264,11 @@ export function ChatContainer() {
         }
     }
 
-    const handlePendingState = async (content: string) => {
-        if (!pendingTransaction) return;
+    // handlePendingState is now mostly for Option Clicks or niche fallbacks
+    // We can simplifying it or keep it for the "Option Click" flow which calls it?
+    // Actually handleOptionClick calls saveTransaction or logic directly. 
+    // We can remove handlePendingState distinct call from handleSendMessage logic above.
 
-        // Clone pending
-        const draft = { ...pendingTransaction };
-        const lower = content.toLowerCase();
-
-        // CASE 1: Missing Amount
-        if (draft.status === 'missing_amount') {
-            // User input should be the amount
-            const amountMatch = content.match(/(\d+[.,]?\d*)/);
-            if (amountMatch) {
-                const amountStr = amountMatch[1].replace(',', '.');
-                draft.amount = parseFloat(amountStr);
-                draft.status = 'success'; // Assume success initially
-
-                // NEW: Also check for Payment Method in this answer
-                // Since we asked "Quanto foi e COMO pagou?", user likely said "20 no credito"
-                const paymentCheck = parseMessage(content);
-                if (paymentCheck?.paymentMethod && paymentCheck.paymentMethod !== 'unknown') {
-                    draft.paymentMethod = paymentCheck.paymentMethod;
-                }
-
-                // RE-CHECK High Value Logic logic here for flow continuity
-                // Check if we still need payment info
-                const needsPayment = (!draft.paymentMethod || draft.paymentMethod === 'unknown');
-                const isHighValue = draft.amount > 100;
-
-                // Note: We don't check hasInstallments here because usually missing_amount flow handles simple inputs, 
-                // but strictly following logic:
-                if (draft.type === 'expense' && needsPayment && isHighValue) {
-                    // ... existing logic asking for method ...
-                    // For brevity, let's reuse generic check or just proceed if simple.
-                    // Let's keep the existing logic block for flow consistency:
-
-                    const lower = content.toLowerCase();
-                    let hasPaymentInfo = draft.paymentMethod && draft.paymentMethod !== 'unknown';
-                    // Fallback check keyword
-                    if (!hasPaymentInfo && ['pix', 'credito', 'creidto', 'debito', 'parcelado', 'vezes', 'x'].some(k => lower.includes(k))) hasPaymentInfo = true;
-
-                    if (!hasPaymentInfo) {
-                        const aiResponse: Message = {
-                            id: (Date.now() + 1).toString(),
-                            role: "assistant",
-                            content: `Certo, R$${draft.amount.toFixed(2)}. Foi à vista, Pix ou parcelado?`,
-                            createdAt: new Date()
-                        };
-                        setMessages(prev => [...prev, aiResponse]);
-                        draft.status = 'needs_details';
-                        setPendingTransaction(draft);
-                        return;
-                    }
-                }
-
-                // Clear pending and save
-                setPendingTransaction(null);
-                await saveTransaction(draft);
-            } else {
-                const aiResponse: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: "assistant",
-                    content: "Ainda não captei o valor. Digite apenas o número, ex: '50'.",
-                    createdAt: new Date()
-                }
-                setMessages(prev => [...prev, aiResponse])
-            }
-            return;
-        }
-
-        // CASE 2: Needs Details (Payment Method / Installments)
-        if (draft.status === 'needs_details') {
-            // 1. Try to detect Payment Method from Answer
-            const paymentCheck = parseMessage(content);
-            if (paymentCheck?.paymentMethod && paymentCheck.paymentMethod !== 'unknown') {
-                draft.paymentMethod = paymentCheck.paymentMethod;
-            } else {
-                // Manual keywords if parser failed (e.g. "sim" for credit context)
-                if (lower.includes('sim') && draft.installments) {
-                    draft.paymentMethod = 'credit';
-                }
-            }
-
-            // 2. Check for Installments updating (e.g. "Ah foi em 10x")
-            const installmentMatch = lower.match(/(?:em\s+)?(\d+)\s*x|(?:em\s+)(\d+)\s*vezes/);
-            if (installmentMatch || lower.includes('parcelado')) {
-                let installments = 1;
-                if (installmentMatch) {
-                    installments = parseInt(installmentMatch[1] || installmentMatch[2]);
-                }
-
-                // If they provided installments now
-                if (installments > 1) {
-                    draft.installmentTotal = draft.amount;
-                    draft.installments = installments;
-                    draft.amount = draft.amount / installments;
-                    draft.description = `${draft.description} (1/${installments})`;
-                    // We probably have payment method 'credit' implied if not set?
-                    if (!draft.paymentMethod || draft.paymentMethod === 'unknown') draft.paymentMethod = 'credit';
-
-                    // Confirm
-                    const aiResponse: Message = {
-                        id: (Date.now() + 1).toString(),
-                        role: "assistant",
-                        content: `Entendi: ${installments}x de R$${draft.amount.toFixed(2)}. Posso registrar?`,
-                        createdAt: new Date()
-                    };
-                    setMessages(prev => [...prev, aiResponse]);
-                    draft.status = 'needs_confirmation';
-                    setPendingTransaction(draft);
-                    return;
-                } else if (!draft.installments) {
-                    // Said parcelado but no number?
-                    const aiResponse: Message = {
-                        id: (Date.now() + 1).toString(),
-                        role: "assistant",
-                        content: "Parcelado em quantas vezes? (ex: 10x)",
-                        createdAt: new Date()
-                    };
-                    setMessages(prev => [...prev, aiResponse]);
-                    return;
-                }
-            }
-
-            // If we have payment method now (or user said "Sim" to "Foi credito?"), save.
-            if (draft.paymentMethod && draft.paymentMethod !== 'unknown') {
-                draft.status = 'success';
-                setPendingTransaction(null);
-                await saveTransaction(draft);
-                return;
-            }
-
-            // If still unknown, maybe they said "Pix"? (Covered by parseMessage above)
-            // If fallback
-            draft.status = 'success';
-            setPendingTransaction(null);
-            await saveTransaction(draft);
-            return;
-        }
-
-        // CASE 3: Confirmation (Final Step)
-        if (draft.status === 'needs_confirmation') {
-            if (['sim', 'yes', 'pode', 'claro', 'ok', 'confirmar'].some(k => lower.includes(k))) {
-                draft.status = 'success';
-                // Append installment info here if not present
-                if (draft.installments && !draft.description.includes('(1/')) {
-                    draft.description = `${draft.description} (1/${draft.installments})`;
-                }
-                setPendingTransaction(null);
-                await saveTransaction(draft);
-            } else {
-                // Cancel
-                const aiResponse: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: "assistant",
-                    content: "Ok, cancelado. Pode digitar novamente se quiser.",
-                    createdAt: new Date()
-                }
-                setMessages(prev => [...prev, aiResponse])
-                setPendingTransaction(null);
-            }
-            return;
-        }
-    }
 
     const saveTransaction = async (parsed: ParsedTransaction) => {
 
@@ -409,33 +287,92 @@ export function ChatContainer() {
             if (tag) finalDescription = `${finalDescription} ${tag}`;
         }
 
+        // Check for Inline New Card Registration 🆕
+        if (parsed.newCard) {
+            const tempId = (Date.now() + 2).toString();
+            setMessages(prev => [...prev, {
+                id: tempId,
+                role: "assistant",
+                content: `💳 Cadastrando cartão **${parsed.newCard?.name}**...`,
+                createdAt: new Date()
+            }]);
+
+            try {
+                const cardRes = await fetch('/api/credit-cards', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsed.newCard)
+                });
+
+                if (cardRes.ok) {
+                    const newCardData = await cardRes.json();
+                    parsed.cardId = newCardData.id;
+                    // Remove temp message or update it? Let's just append success
+                    const successMsg: Message = {
+                        id: (Date.now() + 3).toString(),
+                        role: "assistant",
+                        content: `✅ Cartão cadastrado com sucesso!`,
+                        createdAt: new Date()
+                    };
+                    setMessages(prev => [...prev, successMsg]);
+
+                    // Refresh local cards list so next time AI knows about it
+                    setCards(prev => [newCardData, ...prev]);
+                } else {
+                    console.error("Failed to create card");
+                    setMessages(prev => [...prev, {
+                        id: (Date.now() + 3).toString(),
+                        role: "assistant",
+                        content: `⚠️ Não consegui cadastrar o cartão. Vou salvar sem vínculo.`,
+                        createdAt: new Date()
+                    }]);
+                }
+            } catch (err) {
+                console.error("Error creating card:", err);
+            }
+        }
+
         // Add to database
+        const payload = {
+            type: parsed.type,
+            amount: parsed.amount,
+            category: parsed.category,
+            description: finalDescription,
+            date: new Date(parsed.date).toISOString(),
+            brand: parsed.brand,
+            brandLogo: parsed.brandLogo,
+            installments: parsed.installments,
+            cardId: parsed.cardId,
+            isRecurring: parsed.isRecurring,
+            recurringDay: parsed.recurringDay,
+        };
+
+        console.log("Saving Transaction Payload:", payload);
+
         const response = await fetch('/api/transactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                type: parsed.type,
-                amount: parsed.amount,
-                category: parsed.category,
-                description: finalDescription,
-                date: parsed.date.toISOString(),
-                brand: parsed.brand,
-                brandLogo: parsed.brandLogo,
-                installments: parsed.installments,
-                cardId: parsed.cardId,
-            }),
+            body: JSON.stringify(payload),
         });
 
-        if (!response.ok) throw new Error('Failed to save transaction');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Save Transaction Failed:", errorText);
+            throw new Error('Failed to save transaction: ' + errorText);
+        }
 
-        const successMessage = parsed.type === 'income'
+        let successMessage = parsed.type === 'income'
             ? t.transactions.successfullyUpdated || "Income added!"
             : t.transactions.successfullyUpdated || "Expense added!";
+
+        if (parsed.isRecurring) {
+            successMessage = "Agendado recorrente! 🔄";
+        }
 
         const aiResponse: Message = {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content: `✅ ${successMessage}: ${parsed.description} - $${parsed.amount.toFixed(2)}`,
+            content: `✅ ${successMessage}: ${parsed.description} - $${(parsed.amount || 0).toFixed(2)}`,
             createdAt: new Date()
         }
         setMessages(prev => [...prev, aiResponse])

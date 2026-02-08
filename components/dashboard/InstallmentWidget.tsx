@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Transaction } from "@/lib/types"
 import { Progress } from "@/components/ui/progress"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreditCard, CheckCircle2, Pencil, Tags, Building2, DollarSign } from "lucide-react"
+import { CreditCard, CheckCircle2, Pencil, Tags, Building2, DollarSign, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -47,6 +47,7 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
     const groups: Record<string, InstallmentGroup> = {};
 
     transactions.forEach(t => {
+        if (!t.description) return;
         const match = t.description.match(/(.*?)\s*\((\d+)\/(\d+)\)/);
 
         if (match) {
@@ -109,7 +110,9 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
             const bActive = b.current < b.total;
             if (aActive && !bActive) return -1;
             if (!aActive && bActive) return 1;
-            return b.amount - a.amount;
+            const amountA = isNaN(Number(a.amount)) ? 0 : Number(a.amount);
+            const amountB = isNaN(Number(b.amount)) ? 0 : Number(b.amount);
+            return amountB - amountA;
         });
 
     if (activeInstallments.length === 0) return null;
@@ -198,6 +201,26 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
 
         } catch (error) {
             console.error("Failed to advance", error);
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!editingGroup || !confirm("Tem certeza? Isso excluirá todas as parcelas deste grupo.")) return;
+        setIsSaving(true);
+
+        try {
+            await fetch('/api/transactions/batch', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: editingGroup.ids })
+            });
+
+            router.refresh();
+            setEditingGroup(null);
+        } catch (error) {
+            console.error("Failed to delete", error);
         } finally {
             setIsSaving(false);
         }
@@ -397,17 +420,23 @@ export function InstallmentWidget({ transactions }: { transactions: Transaction[
                             </div>
                         )}
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setEditingGroup(null)}>Cancelar</Button>
-                        {!isAdvancing ? (
-                            <Button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                                {isSaving ? "Salvando..." : "Confirmar Alterações"}
-                            </Button>
-                        ) : (
-                            <Button onClick={handleAdvance} disabled={isSaving || installmentsToAdvance === 0} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                {isSaving ? "Processando..." : "Confirmar Pagamento"}
-                            </Button>
-                        )}
+                    <DialogFooter className="mr-auto w-full sm:justify-between">
+                        <Button variant="ghost" onClick={handleDelete} className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20 mr-auto p-2 h-10 w-10 sm:w-auto" title="Excluir">
+                            <Trash2 className="w-5 h-5 sm:mr-2" />
+                            <span className="hidden sm:inline">Excluir</span>
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" onClick={() => setEditingGroup(null)}>Cancelar</Button>
+                            {!isAdvancing ? (
+                                <Button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    {isSaving ? "Salvando..." : "Confirmar Alterações"}
+                                </Button>
+                            ) : (
+                                <Button onClick={handleAdvance} disabled={isSaving || installmentsToAdvance === 0} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    {isSaving ? "Processando..." : "Confirmar Pagamento"}
+                                </Button>
+                            )}
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

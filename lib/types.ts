@@ -10,6 +10,9 @@ export interface Transaction {
     created_at: string
     brand?: string
     brand_logo_url?: string
+    is_recurring?: boolean
+    recurring_day?: number
+    status?: 'paid' | 'pending'
 }
 
 export type CreateTransactionDTO = Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>

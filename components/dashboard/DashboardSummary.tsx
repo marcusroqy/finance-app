@@ -1,5 +1,7 @@
 "use client"
 
+import { formatCurrency } from "@/lib/utils"
+
 import { useLanguage } from "@/lib/i18n/language-context"
 import { ArrowDownCircle, ArrowUpCircle, DollarSign } from "lucide-react"
 
@@ -20,7 +22,7 @@ export function DashboardSummary({ income, expenses, total }: DashboardSummaryPr
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="text-2xl font-bold pt-2">
-                    ${total.toFixed(2)}
+                    {formatCurrency(total)}
                 </div>
             </div>
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
@@ -29,7 +31,7 @@ export function DashboardSummary({ income, expenses, total }: DashboardSummaryPr
                     <ArrowUpCircle className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div className="text-2xl font-bold pt-2 text-emerald-500">
-                    +${income.toFixed(2)}
+                    +{formatCurrency(income)}
                 </div>
             </div>
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
@@ -38,7 +40,7 @@ export function DashboardSummary({ income, expenses, total }: DashboardSummaryPr
                     <ArrowDownCircle className="h-4 w-4 text-rose-500" />
                 </div>
                 <div className="text-2xl font-bold pt-2 text-rose-500">
-                    -${expenses.toFixed(2)}
+                    -{formatCurrency(expenses)}
                 </div>
             </div>
         </div>

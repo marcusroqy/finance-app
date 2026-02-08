@@ -46,6 +46,11 @@ export function ChatMessage({ message, onOptionClick }: ChatMessageProps) {
                             : "bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-2xl rounded-tl-sm shadow-sm"
                     )}
                 >
+                    {message.image && (
+                        <div className="mb-2 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                            <img src={message.image} alt="Attachment" className="max-w-full h-auto object-cover max-h-60 w-full" />
+                        </div>
+                    )}
                     <p className="whitespace-pre-wrap">{message.content}</p>
                 </div>
 
