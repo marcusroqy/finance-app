@@ -44,18 +44,19 @@ export async function POST(req: Request) {
             pendingBillsList = pendingBills.map(b => `- ${b.description} (R$ ${b.amount}, Vence: ${b.date}) [ID: ${b.id}]`).join('\n');
         }
 
-        // Calculate Credit Card Balances (Approximation: Sum of expenses in current month)
-        // This helps when user says "pay total bill"
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
+        // Calculate Credit Card Balances (Approximation: Sum of expenses in current + previous month)
+        // This helps when user says "pay total bill" (e.g. paying Jan bill in Feb)
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1); // Go back 1 month
+        startDate.setDate(1); // Start of previous month
+        startDate.setHours(0, 0, 0, 0);
 
         const { data: cardExpenses } = await supabase
             .from('transactions')
             .select('amount, card_id')
             .eq('user_id', user.id)
             .eq('type', 'expense')
-            .gte('date', startOfMonth.toISOString())
+            .gte('date', startDate.toISOString())
             .not('card_id', 'is', null);
 
         let cardBalancesList = "None";
