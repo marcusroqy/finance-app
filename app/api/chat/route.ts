@@ -128,7 +128,9 @@ export async function POST(req: Request) {
         2. VALIDATE (CRITICAL):
            - NEVER return status="success" if "amount" is null.
            - If "amount" is missing, set status="needs_details" and ask for it.
-           - For BILL PAYMENTS ("pay_bill" action), usage of 'response_message' to ask for confirmation is MANDATORY.
+           - For BILL PAYMENTS ("pay_bill" action):
+               - IF context has "amount" AND user says "Sim", "Isso", "Confirmar", "Pode": set status="success".
+               - OTHERWISE: usage of 'response_message' to ask for confirmation is MANDATORY.
 
         3. INTERROGATE: If fields are missing, set status="needs_details" and ask specifically for them.
 
